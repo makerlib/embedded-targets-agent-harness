@@ -1,0 +1,163 @@
+# HK-002 feature contract: feature contract, scope and artefact classes (spec v1.1.1 §30).
+# Bootstrapping method as for HK-001 and HK-015: the kernel cannot yet lock or
+# gate its own contracts, so this contract is hand-written, verified with
+# pytest and an evidence note, and approved by a human.
+api_version: embedded-targets.ai/v1
+kind: FeatureContract
+
+metadata:
+  id: HK-002
+  title: Feature contract, scope and artefact classes
+  owner: feature-owner
+  target_context:
+    family: none
+    release: none
+
+profile: full                     # lite ineligible: diff exceeds 5 files / 300 lines
+objective: >
+  Deliver the contract service and scope service: feature-contract parsing and
+  validation, RFC 8785 canonical hashing, acceptance-criterion and lite
+  eligibility lint, local feature-owner approval bound to contract content,
+  scope lock and mutation detection, artefact classification (§9.21),
+  changed-path scope validation, tree-hash checkpoints and active-feature
+  discovery, with `harness feature create|lint|approve` on the CLI.
+
+acceptance_criteria:
+  - id: AC-001
+    statement: >
+      Feature contracts load from YAML into the JSON data model (duplicate
+      keys and non-JSON types such as dates rejected) and validate against
+      schemas/feature.schema.json; failures report FEATURE_CONTRACT_INVALID
+      and an unknown api_version reports SCHEMA_VERSION_UNSUPPORTED.
+    verification_method: gate
+    gates: [structural, kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-002
+    statement: >
+      Contract hashing implements RFC 8785 (UTF-16 key order, ECMAScript
+      number serialisation, NaN/Infinity and unsafe integers rejected) and
+      SHA-256. Semantically equal YAML with different key order, quoting and
+      formatting hashes identically; RFC 8785 number test vectors pass.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-003
+    statement: >
+      Lint enforces §9.4.1: every criterion has a verification method (else
+      ACCEPTANCE_CRITERION_UNVERIFIABLE); gate criteria list at least one
+      gate that is in required_gates and at or below required_level; the
+      required level is achievable by required_gates; scope globs are valid
+      and cannot traverse. A lite contract that breaks eligibility (§13.5:
+      level above the configured maximum, Class D/E approvals, model or
+      public-API paths in scope, human_review criteria) reports
+      PROFILE_ESCALATION_REQUIRED.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-004
+    statement: >
+      `harness feature approve` records a local owner approval bound to the
+      contract's content hash; it refuses a contract that fails lint, an
+      approver equal to the drafter, and agent-instance identities. Editing
+      the contract after approval invalidates it, and locking without a valid
+      approval fails with OWNER_APPROVAL_MISSING.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-005
+    statement: >
+      Locking produces a scope lock (contract hash, normalised scope,
+      artefact classes, baseline commit). Verifying a lock against a changed
+      contract reports CONTRACT_MUTATED_AFTER_LOCK with a field-level
+      contract diff.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-006
+    statement: >
+      Every path classifies into exactly one artefact class (harness,
+      protected, qe_test, derived, model, source) with built-in defaults from
+      §9.21 that project configuration can extend.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-007
+    statement: >
+      Scope validation of a change set reports PATH_OUTSIDE_SCOPE,
+      PROTECTED_PATH_CHANGED (protected wins over an overlapping allowed
+      glob), QE_TEST_MODIFIED for non-QE writers, harness-path changes,
+      DERIVED_ARTEFACT_COMMITTED for derived paths in a candidate commit
+      (derived paths are otherwise ignored), checks both sides of renames and
+      copies, rejects path traversal, and lists changed model files.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-008
+    statement: >
+      GitPort gains a tree-hash checkpoint that includes untracked,
+      non-ignored files and excludes ignored ones; the Git CLI adapter and
+      the fake pass the same contract tests, and any change after a
+      checkpoint is detected.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-009
+    statement: >
+      Active-feature discovery reports NO_ACTIVE_FEATURE for zero and
+      MULTIPLE_ACTIVE_FEATURES for more than one contract in features/active.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-010
+    statement: >
+      `harness feature create`, `feature lint` and `feature approve` work with
+      --json and defined exit codes; approve appends an approval.recorded
+      audit event that validates against the audit-record schema;
+      `feature draft` still reports NOT_IMPLEMENTED (Intake persona, HK-007).
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+
+scope:
+  allowed_paths:
+    - src/et_harness/contracts/**
+    - src/et_harness/artefacts/**
+    - src/et_harness/repository/**
+    - src/et_harness/common/**
+    - src/et_harness/cli/**
+    - schemas/feature.schema.json
+    - schemas/artefact-classes.schema.json
+    - schemas/project-config.schema.json
+    - templates/feature/**
+    - tests/unit/**
+    - tests/contract/**
+    - tests/fixtures/**
+    - docs/bootstrap-evidence/HK-002.md
+    - README.md
+    - CHANGELOG.md
+  protected_paths:
+    - features/active/**
+    - features/completed/**
+    - docs/specification/**
+    - src/et_harness/sessions/**
+    - src/et_harness/audit/**
+    - schemas/audit-record.schema.json
+    - schemas/orchestration-state.schema.json
+    - tools/monitor/**
+  qe_test_paths: []
+
+verification:
+  required_level: L1
+  required_gates: [structural, kernel-pytest]
+  qe_test_design: off
+
+approvals:
+  required: []
+
+rework:
+  maximum_cycles: 3
+
+intake:
+  drafted_by: claude-code-implementer
+  approved_by: feature-owner            # human approval recorded 2026-11-24 (session chat)
+  approval_ref: local                   # verification source local (bootstrapping, advisory)
