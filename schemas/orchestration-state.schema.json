@@ -109,6 +109,13 @@
             "string",
             "null"
           ]
+        },
+        "qe_test_design": {
+          "enum": [
+            "required",
+            "optional",
+            "off"
+          ]
         }
       },
       "required": [
@@ -272,6 +279,34 @@
                 "INCONCLUSIVE",
                 null
               ]
+            },
+            "reason_codes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            },
+            "raised_at": {
+              "type": "string"
+            },
+            "from_state": {
+              "enum": [
+                "CREATED",
+                "INITIALISING",
+                "PLANNING",
+                "PLAN_REVIEW",
+                "TEST_DESIGN",
+                "DEVELOPING",
+                "DEVELOPMENT_REVIEW",
+                "VERIFYING",
+                "EVALUATING",
+                "REWORK_PLANNING",
+                "PASSED",
+                "FAILED",
+                "BLOCKED",
+                "INCONCLUSIVE"
+              ]
             }
           },
           "required": [
@@ -358,6 +393,18 @@
           "revision": {
             "type": "integer",
             "minimum": 1
+          },
+          "owner": {
+            "enum": [
+              "kernel",
+              "planner",
+              "qe",
+              "development",
+              "evaluator"
+            ]
+          },
+          "at": {
+            "type": "string"
           }
         },
         "required": [
@@ -366,6 +413,65 @@
           "to",
           "reason"
         ]
+      }
+    },
+    "initialisation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "checks"
+      ],
+      "properties": {
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "status"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "passed",
+                  "failed",
+                  "not_implemented"
+                ]
+              },
+              "reason_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "planned_feature": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "baseline_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "scope_lock_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     }
   }

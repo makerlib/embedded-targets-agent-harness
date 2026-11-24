@@ -120,13 +120,6 @@ STUBS: list[tuple[str | None, str, tuple[str, ...], tuple[str, ...], str]] = [
     (None, "bootstrap", (), (), "HK-010"),
     (None, "doctor", (), (), "HK-010"),
     ("feature", "draft", (), (), "HK-007"),
-    ("workflow", "create", (), (), "HK-003"),
-    ("workflow", "start", (), (), "HK-003"),
-    ("workflow", "status", (), (), "HK-003"),
-    ("workflow", "history", (), (), "HK-003"),
-    ("workflow", "resume", (), (), "HK-003"),
-    ("workflow", "block", (), (), "HK-003"),
-    ("workflow", "cancel", (), (), "HK-003"),
     ("persona", "launch", ("persona",), (), "HK-007"),
     ("handoff", "submit", (), (), "HK-008"),
     ("handoff", "validate", (), (), "HK-008"),
@@ -198,6 +191,10 @@ def _register_stubs() -> None:
 from et_harness.cli import feature as _feature  # noqa: E402
 
 _feature.register(cli, harness_command)
+
+from et_harness.cli import workflow as _workflow  # noqa: E402
+
+_workflow.register(cli, harness_command)
 _register_stubs()
 
 

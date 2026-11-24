@@ -15,8 +15,9 @@ features are claimed here.
 |---|---|---|
 | HK-001 | Kernel skeleton: package, CLI framework, layered config, schemas, Git repository port, atomic state store with integrity chain, audit log, reason codes | Implemented (bootstrapping rule, advisory) |
 | HK-002 | Feature contracts (RFC 8785 hashing, lint, local owner approval, lock), artefact classes, scope validation, tree-hash checkpoints; `harness feature create/lint/approve` | Implemented (bootstrapping rule, advisory) |
+| HK-003 | Orchestration state machine (§15 table, ownership, revisioned and audited transitions, block/resume, tamper recovery); `harness workflow create/start/status/history/block/resume/cancel` | Implemented (bootstrapping rule, advisory) |
 | HK-015 | Read-only run monitor (`tools/monitor/`), audit record schema and event vocabulary | Implemented ahead of HK-003 at the feature owner's request (bootstrapping rule, advisory) |
-| HK-003 … HK-014 | Contracts and scope, state machine, gates, evaluator, MATLAB slice, personas, handoffs, packages, adapters, policy, rework, CI | Not started |
+| HK-004 … HK-014 | Contracts and scope, state machine, gates, evaluator, MATLAB slice, personas, handoffs, packages, adapters, policy, rework, CI | Not started |
 
 Every `harness` command from spec §26 is registered. Commands whose feature is
 not built report `NOT_IMPLEMENTED` and exit with code 3. They never report
@@ -48,6 +49,24 @@ content hash, so editing the contract afterwards invalidates it. A local
 approval is unauthenticated and valid for advisory runs only (spec §9.13).
 Until the gate registry exists (HK-004), declare package gate levels in
 `.agent-harness/project.yaml` under `gate_levels`.
+
+## Workflows
+
+With one approved contract in `features/active/` and a committed work tree:
+
+```bash
+harness workflow create
+harness workflow start
+harness workflow status
+```
+
+`start` captures the baseline, locks the contract and scope, and moves to
+PLANNING. Checks that later features provide (package resolution HK-009,
+baseline gates HK-004, host guards HK-010) are listed as NOT_IMPLEMENTED, not
+claimed. Kernel state lives in `.agent-harness/state/` (git-ignored). If it is
+edited outside the kernel, the next command quarantines the edit, restores
+the last-known-good copy and blocks with `STATE_TAMPER_DETECTED`; resume
+needs `--maintainer-recovery`.
 
 ## Run monitor
 

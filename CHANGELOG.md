@@ -2,6 +2,15 @@
 
 ## 0.1.0 (unreleased)
 
+### HK-003 Orchestration state machine
+
+- §13 states, §15 transition table (data), §13.2 ownership for both profiles.
+- Workflow engine: expected revisions, append-only history with owner and §9.19.3 reason, `state.transition` / `blocker.*` audit events.
+- Final-state enforcement, block, resume to the recorded state, INCONCLUSIVE resume, abandon.
+- Tamper handling: last-known-good copies, quarantine, BLOCKED with `STATE_TAMPER_DETECTED`; contract mutation after lock blocks.
+- `harness workflow create | start | status | history | block | resume | cancel`; scope-lock schema.
+- `AuditLog.append` accepts only §9.19.2 event types.
+
 ### HK-002 Feature contract, scope and artefact classes
 
 - Feature contract schema, loader (JSON data model only) and RFC 8785 hashing with ECMAScript number serialisation.

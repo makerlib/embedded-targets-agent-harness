@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://embedded-targets.ai/schemas/scope-lock.schema.json",
+  "title": "Scope lock",
+  "description": "Locked contract and scope for one workflow (\u00a79.4, UC-04). Written by the kernel state store.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "kind",
+    "revision",
+    "workflow_id",
+    "feature_id",
+    "contract_path",
+    "contract_hash",
+    "content_hash",
+    "approval",
+    "baseline_commit",
+    "profile",
+    "scope",
+    "artefact_classes",
+    "contract",
+    "integrity"
+  ],
+  "properties": {
+    "api_version": {
+      "type": "string"
+    },
+    "kind": {
+      "const": "ScopeLock"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "workflow_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "feature_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contract_path": {
+      "type": "string"
+    },
+    "contract_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "content_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "approval": {
+      "type": "object",
+      "required": [
+        "approved_by",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "approved_by": {
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "local",
+            "gitlab"
+          ]
+        }
+      }
+    },
+    "baseline_commit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "profile": {
+      "enum": [
+        "full",
+        "lite"
+      ]
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowed_paths",
+        "protected_paths",
+        "qe_test_paths"
+      ],
+      "properties": {
+        "allowed_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "protected_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "qe_test_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "artefact_classes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "contract": {
+      "type": "object"
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "previous_state_hash",
+        "audit_sequence"
+      ],
+      "properties": {
+        "previous_state_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "audit_sequence": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

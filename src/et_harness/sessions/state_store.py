@@ -17,13 +17,19 @@ for this state key, at the sequence the document records. Anything else is
 steps 4 and 5, the file still holds exactly the previous state named by that
 entry. That is a crash, not tampering: the store records a
 ``state.write_rolled_back`` entry and returns the valid prior state.
+
+Last-known-good (§9.5): after each commit the same document is also written
+to ``<name>.lkg<suffix>``. ``recover()`` restores it only if it verifies
+against the audit log, and moves the rejected file to ``quarantine/``.
 """
 
 from __future__ import annotations
 
 import copy
 import json
+import os
 from collections.abc import Callable
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -53,6 +59,14 @@ class StateStore:
         self.schema = schema
         self.state_key = state_key or self.path.name
         self._revision_path = revision_path
+
+    @property
+    def lkg_path(self) -> Path:
+        return self.path.with_name(f"{self.path.stem}.lkg{self.path.suffix}")
+
+    @property
+    def quarantine_dir(self) -> Path:
+        return self.path.parent / "quarantine"
 
     # --- helpers -------------------------------------------------------------
     def _revision(self, document: dict[str, Any]) -> int:
@@ -109,15 +123,37 @@ class StateStore:
 
     def load(self) -> dict[str, Any]:
         """Load and verify the state; raise ``STATE_TAMPER_DETECTED`` on mismatch."""
+        return self._load_verified(self.path, allow_rollback=True)
+
+    def recover(self) -> tuple[dict[str, Any], Path | None]:
+        """Restore the last-known-good copy after a tamper finding.
+
+        Returns the restored document and the quarantine path of the rejected
+        file (None if the state file was missing). Raises
+        ``STATE_TAMPER_DETECTED`` if no copy verifies against the audit log.
+        """
+        if not self.lkg_path.exists():
+            raise self._tamper("no last-known-good copy to recover from")
+        document = self._load_verified(self.lkg_path, allow_rollback=False)
+        quarantined = None
+        if self.path.exists():
+            self.quarantine_dir.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+            quarantined = self.quarantine_dir / f"{self.path.stem}.{stamp}{self.path.suffix}"
+            os.replace(self.path, quarantined)
+        atomic_write_text(self.path, self.lkg_path.read_text(encoding="utf-8"))
+        return document, quarantined
+
+    def _load_verified(self, path: Path, *, allow_rollback: bool) -> dict[str, Any]:
         writes = self._write_entries()
-        if not self.path.exists():
+        if not path.exists():
             if writes:
                 raise self._tamper("state file is missing but the audit log records writes")
             raise HarnessError(
-                ReasonCode.STATE_NOT_FOUND, f"no state at {self.path}", {"state_file": str(self.path)}
+                ReasonCode.STATE_NOT_FOUND, f"no state at {path}", {"state_file": str(path)}
             )
         try:
-            document = json.loads(self.path.read_text(encoding="utf-8"))
+            document = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             raise self._tamper(f"state file is unreadable: {exc}") from exc
         if not writes:
@@ -136,7 +172,8 @@ class StateStore:
                 raise self._tamper("state integrity.audit_sequence does not match the audit log")
             self._validate(document)
             return document
-        if last["event_type"] == WRITE_EVENT and actual_hash == details.get("previous_state_hash"):
+        if (allow_rollback and last["event_type"] == WRITE_EVENT
+                and actual_hash == details.get("previous_state_hash")):
             # Crash between audit append and state replace: prior state is intact.
             self._validate(document)
             self.audit.append(
@@ -200,5 +237,7 @@ class StateStore:
             },
             **self._audit_fields(new),
         )
-        atomic_write_text(self.path, json.dumps(new, indent=2, sort_keys=True) + "\n")
+        text = json.dumps(new, indent=2, sort_keys=True) + "\n"
+        atomic_write_text(self.path, text)
+        atomic_write_text(self.lkg_path, text)
         return new

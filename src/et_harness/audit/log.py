@@ -113,6 +113,13 @@ class AuditLog:
         ``fields`` may set any §9.19 field. ``details`` holds event-specific
         data. All string content is redacted before hashing and writing.
         """
+        from et_harness.audit.vocabulary import EVENTS
+
+        if event_type not in EVENTS:
+            raise HarnessError(
+                ReasonCode.INTERNAL_ERROR,
+                f"event type {event_type!r} is not in the spec §9.19.2 vocabulary",
+            )
         unknown = set(fields) - set(SPEC_FIELDS)
         if unknown:
             raise HarnessError(
