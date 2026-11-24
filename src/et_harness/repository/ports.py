@@ -55,3 +55,10 @@ class GitPort(Protocol):
 
     def is_ignored(self, path: str) -> bool:
         """True if ``path`` is ignored by the repository's ignore rules."""
+
+    def checkpoint_tree(self) -> str:
+        """Content hash of the working tree: tracked plus untracked, non-ignored files.
+
+        Two calls return the same value exactly when no such file was added,
+        removed or modified in between (§9.1 safe checkpoint).
+        """

@@ -1,0 +1,47 @@
+api_version: embedded-targets.ai/v1
+kind: FeatureContract
+metadata:
+  id: FEATURE-001
+  title: Add ADC trigger source option to reference driver block
+  owner: jane.doe
+  target_context:
+    family: c2000
+    release: R2026b
+profile: full
+objective: >
+  Allow the ADC driver block to select ePWM SOCA or SOCB as trigger source.
+acceptance_criteria:
+  - id: AC-001
+    statement: Block mask exposes trigger source with values SOCA and SOCB.
+    verification_method: gate
+    gates: [matlab-unittest]
+    expected_on_baseline: fail
+  - id: AC-002
+    statement: Generated code configures the selected trigger source.
+    verification_method: gate
+    gates: [codegen-compile-reference]
+    expected_on_baseline: fail
+  - id: AC-003
+    statement: Block help text describes the new option.
+    verification_method: human_review
+scope:
+  allowed_paths:
+    - src/blocks/adc/**
+    - tests/adc/**
+  protected_paths:
+    - src/blocks/adc/legacy/**
+    - tests/golden/**
+  qe_test_paths:
+    - qe-tests/adc/**
+verification:
+  required_level: L3
+  required_gates: [structural, matlab-unittest, codegen-compile-reference]
+  qe_test_design: required
+approvals:
+  required: []
+rework:
+  maximum_cycles: 3
+intake:
+  drafted_by: intake-001
+  approved_by: null
+  approval_ref: null

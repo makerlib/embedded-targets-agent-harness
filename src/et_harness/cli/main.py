@@ -119,10 +119,7 @@ def config_show_effective(
 STUBS: list[tuple[str | None, str, tuple[str, ...], tuple[str, ...], str]] = [
     (None, "bootstrap", (), (), "HK-010"),
     (None, "doctor", (), (), "HK-010"),
-    ("feature", "create", (), (), "HK-002"),
-    ("feature", "draft", (), (), "HK-002"),
-    ("feature", "lint", (), (), "HK-002"),
-    ("feature", "approve", (), (), "HK-002"),
+    ("feature", "draft", (), (), "HK-007"),
     ("workflow", "create", (), (), "HK-003"),
     ("workflow", "start", (), (), "HK-003"),
     ("workflow", "status", (), (), "HK-003"),
@@ -178,7 +175,9 @@ def _make_stub(full_name: str, planned: str) -> CommandBody:
 
 
 def _register_stubs() -> None:
-    groups: dict[str, click.Group] = {}
+    groups: dict[str, click.Group] = {
+        name: cmd for name, cmd in cli.commands.items() if isinstance(cmd, click.Group)
+    }
     for group_name, name, args, options, planned in STUBS:
         full_name = f"{group_name} {name}" if group_name else name
         command_fn: Any = harness_command(full_name)(_make_stub(full_name, planned))
@@ -196,6 +195,9 @@ def _register_stubs() -> None:
         groups[group_name].add_command(command)
 
 
+from et_harness.cli import feature as _feature  # noqa: E402
+
+_feature.register(cli, harness_command)
 _register_stubs()
 
 

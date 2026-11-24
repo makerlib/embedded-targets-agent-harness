@@ -46,6 +46,18 @@ class Baseline:
         return {"commit": self.commit, "branch": self.branch, "fingerprint": self.fingerprint}
 
 
+@dataclass(frozen=True)
+class Checkpoint:
+    """A safe or freeze checkpoint (§9.1, §17)."""
+
+    tree_hash: str
+    head_commit: str | None
+    kind: str = "safe"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"tree_hash": self.tree_hash, "head_commit": self.head_commit, "kind": self.kind}
+
+
 class RepositoryService:
     def __init__(self, git: GitPort) -> None:
         self._git = git
@@ -77,6 +89,21 @@ class RepositoryService:
             "branch": status.branch,
             "changes": [c.to_dict() for c in status.changes],
         })
+
+    def checkpoint(self, kind: str = "safe") -> Checkpoint:
+        if kind not in ("safe", "freeze"):
+            raise HarnessError(ReasonCode.INTERNAL_ERROR, f"unknown checkpoint kind {kind!r}")
+        return Checkpoint(self._git.checkpoint_tree(), self._git.head_commit(), kind)
+
+    def verify_checkpoint(self, checkpoint: Checkpoint) -> None:
+        """Raise HANDOFF_DIFF_MISMATCH if the working tree changed since ``checkpoint``."""
+        current = self._git.checkpoint_tree()
+        if current != checkpoint.tree_hash:
+            raise HarnessError(
+                ReasonCode.HANDOFF_DIFF_MISMATCH,
+                f"working tree changed since the {checkpoint.kind} checkpoint",
+                {"checkpoint": checkpoint.tree_hash, "current": current},
+            )
 
     def capture_baseline(self, *, require_clean: bool = True) -> Baseline:
         status = self.status()

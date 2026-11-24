@@ -84,3 +84,21 @@ def test_duplicate_yaml_keys_rejected() -> None:
 def test_non_mapping_yaml_rejected() -> None:
     with pytest.raises(HarnessError):
         load_yaml_text("- just\n- a list\n")
+
+
+# --- HK-002: YAML 1.2 boolean semantics -------------------------------------------------
+
+@pytest.mark.parametrize("word", ["off", "on", "yes", "no", "y", "n", "Off", "NO"])
+def test_yaml_1_1_bool_words_stay_strings(word: str) -> None:
+    assert load_yaml_text(f"value: {word}\n")["value"] == word
+
+
+@pytest.mark.parametrize("word,expected", [("true", True), ("false", False), ("True", True), ("FALSE", False)])
+def test_yaml_true_false_are_booleans(word: str, expected: bool) -> None:
+    assert load_yaml_text(f"value: {word}\n")["value"] is expected
+
+
+def test_pyyaml_safe_loader_unchanged() -> None:
+    import yaml
+
+    assert yaml.safe_load("value: off\n")["value"] is False  # the global loader is not patched

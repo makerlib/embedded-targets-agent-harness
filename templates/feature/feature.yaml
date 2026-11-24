@@ -1,0 +1,46 @@
+# Feature contract (spec v1.1.1 §9.4.1). Created by `harness feature create`.
+# Every acceptance criterion needs a verification method: `gate` with at least
+# one gate in verification.required_gates, or `human_review`. Run
+# `harness feature lint` until it is clean, then have the feature owner run
+# `harness feature approve`. Do not edit the intake approval fields by hand.
+api_version: embedded-targets.ai/v1
+kind: FeatureContract
+
+metadata:
+  id: "{feature_id}"
+  title: "{title}"
+  owner: "{owner}"
+
+profile: "{profile}"
+
+objective: >
+  Describe the single bounded outcome this feature delivers.
+
+acceptance_criteria:
+  - id: AC-001
+    statement: Replace with a testable statement.
+    verification_method: gate
+    gates: [structural]
+    expected_on_baseline: fail
+
+scope:
+  allowed_paths:
+    - src/replace-me/**
+  protected_paths: []
+  qe_test_paths: []
+
+verification:
+  required_level: L0
+  required_gates: [structural]
+  qe_test_design: "{qe_test_design}"
+
+approvals:
+  required: []
+
+rework:
+  maximum_cycles: 3
+
+intake:
+  drafted_by: "{drafted_by}"
+  approved_by: null
+  approval_ref: null

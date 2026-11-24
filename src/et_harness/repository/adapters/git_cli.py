@@ -131,6 +131,17 @@ class GitCli:
         ]
         return sorted(marked)
 
+    def checkpoint_tree(self) -> str:
+        """Git tree ID of the whole working tree, via a throwaway index."""
+        base = self.head_commit()
+        with tempfile.TemporaryDirectory(prefix="et-harness-index-") as tmp:
+            env = {"GIT_INDEX_FILE": str(Path(tmp) / "index")}
+            if base is not None:
+                _run(["read-tree", base], self._root, env=env)
+            _run(["add", "--all", "--", "."], self._root, env=env)
+            tree = _run(["write-tree"], self._root, env=env).stdout.decode("utf-8").strip()
+        return "git-tree:" + tree
+
     def is_ignored(self, path: str) -> bool:
         result = _run(["check-ignore", "-q", "--no-index", "--", path], self._root, check=False)
         return result.returncode == 0

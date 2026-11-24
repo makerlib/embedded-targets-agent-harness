@@ -67,6 +67,13 @@ class FakeGit:
                 return True
         return False
 
+    def checkpoint_tree(self) -> str:
+        visible = sorted(
+            (p, hashlib.sha256(c).hexdigest()) for p, c in self.worktree.items()
+            if p in self._tracked or not self.is_ignored(p)
+        )
+        return "fake-tree:" + hashlib.sha256(repr(visible).encode()).hexdigest()
+
     def changed_paths(self, base: str | None) -> list[PathChange]:
         base = base if base is not None else self._head
         before = dict(self._commits[base]) if base is not None else {}

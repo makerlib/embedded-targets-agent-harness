@@ -93,6 +93,33 @@
     },
     "settings": {
       "$ref": "harness-config.schema.json#/$defs/settings"
+    },
+    "artefact_classes": {
+      "$ref": "artefact-classes.schema.json"
+    },
+    "public_api_paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "description": "Globs for public-API paths; a lite contract may not include them (\u00a713.5)."
+    },
+    "gate_levels": {
+      "type": "object",
+      "additionalProperties": {
+        "enum": [
+          "L0",
+          "L1",
+          "L2",
+          "L3",
+          "L4",
+          "L5",
+          "L6"
+        ]
+      },
+      "description": "Verification level per gate ID, used by contract lint until the gate registry (HK-004) exists."
     }
   }
 }

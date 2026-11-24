@@ -1,0 +1,33 @@
+# Same contract as feature-001.yaml: different key order, quoting, flow style and comments.
+kind: "FeatureContract"
+api_version: 'embedded-targets.ai/v1'
+intake: {approval_ref: ~, approved_by: null, drafted_by: "intake-001"}
+rework: {maximum_cycles: 3}
+approvals: {required: []}
+verification:
+  qe_test_design: required
+  required_gates:
+    - structural
+    - matlab-unittest
+    - codegen-compile-reference
+  required_level: "L3"
+scope:
+  qe_test_paths: ["qe-tests/adc/**"]
+  protected_paths: ["src/blocks/adc/legacy/**", "tests/golden/**"]
+  allowed_paths: ["src/blocks/adc/**", "tests/adc/**"]
+acceptance_criteria:
+  - {statement: "Block mask exposes trigger source with values SOCA and SOCB.", id: AC-001,
+     gates: [matlab-unittest], verification_method: gate, expected_on_baseline: fail}
+  - expected_on_baseline: fail
+    gates: [codegen-compile-reference]
+    verification_method: gate
+    statement: Generated code configures the selected trigger source.
+    id: AC-002
+  - {verification_method: human_review, statement: Block help text describes the new option., id: AC-003}
+objective: "Allow the ADC driver block to select ePWM SOCA or SOCB as trigger source.\n"
+profile: full
+metadata:
+  target_context: {release: R2026b, family: c2000}
+  owner: jane.doe
+  title: Add ADC trigger source option to reference driver block
+  id: FEATURE-001

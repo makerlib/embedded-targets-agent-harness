@@ -2,6 +2,14 @@
 
 ## 0.1.0 (unreleased)
 
+### HK-002 Feature contract, scope and artefact classes
+
+- Feature contract schema, loader (JSON data model only) and RFC 8785 hashing with ECMAScript number serialisation.
+- Lint: verification methods, gate levels and required gates, scope globs, lite eligibility.
+- `harness feature create | lint | approve`; local owner approval bound to the contract content hash, audited as `approval.recorded`.
+- Scope lock, `CONTRACT_MUTATED_AFTER_LOCK` with field-level diff, active-feature discovery.
+- Artefact classes (§9.21) and change-set scope validation; `GitPort.checkpoint_tree()` tree-hash checkpoints.
+
 ### HK-015 Read-only run monitor
 
 - `tools/monitor/`: read-only live/replay/demo monitor (server, page, simulator, sample run).

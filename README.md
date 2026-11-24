@@ -14,8 +14,9 @@ features are claimed here.
 | Feature | Scope | Status |
 |---|---|---|
 | HK-001 | Kernel skeleton: package, CLI framework, layered config, schemas, Git repository port, atomic state store with integrity chain, audit log, reason codes | Implemented (bootstrapping rule, advisory) |
+| HK-002 | Feature contracts (RFC 8785 hashing, lint, local owner approval, lock), artefact classes, scope validation, tree-hash checkpoints; `harness feature create/lint/approve` | Implemented (bootstrapping rule, advisory) |
 | HK-015 | Read-only run monitor (`tools/monitor/`), audit record schema and event vocabulary | Implemented ahead of HK-003 at the feature owner's request (bootstrapping rule, advisory) |
-| HK-002 … HK-014 | Contracts and scope, state machine, gates, evaluator, MATLAB slice, personas, handoffs, packages, adapters, policy, rework, CI | Not started |
+| HK-003 … HK-014 | Contracts and scope, state machine, gates, evaluator, MATLAB slice, personas, handoffs, packages, adapters, policy, rework, CI | Not started |
 
 Every `harness` command from spec §26 is registered. Commands whose feature is
 not built report `NOT_IMPLEMENTED` and exit with code 3. They never report
@@ -32,6 +33,21 @@ harness config show-effective          # inside any Git repository
 harness config show-effective --json
 python -m pytest
 ```
+
+## Feature contracts
+
+```bash
+harness feature create FEATURE-001 --title "Short title" --owner jane.doe
+harness feature lint features/backlog/FEATURE-001.yaml
+harness feature approve features/backlog/FEATURE-001.yaml --approver jane.doe
+```
+
+`approve` refuses agent identities, the drafter, and any request from inside
+a kernel-launched agent session. The approval is bound to the contract's
+content hash, so editing the contract afterwards invalidates it. A local
+approval is unauthenticated and valid for advisory runs only (spec §9.13).
+Until the gate registry exists (HK-004), declare package gate levels in
+`.agent-harness/project.yaml` under `gate_levels`.
 
 ## Run monitor
 

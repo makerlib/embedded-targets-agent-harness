@@ -217,3 +217,62 @@ def test_paths_with_spaces_and_unicode(git_repo: Path) -> None:
     seed(ws)
     ws.write("docs/naïve file.md", "x\n")
     assert [c.path for c in ws.port.changed_paths(None)] == ["docs/naïve file.md"]
+
+
+# --- HK-002 AC-008: tree-hash checkpoints ----------------------------------------------
+
+def test_checkpoint_stable_without_changes(ws: Workspace) -> None:
+    seed(ws)
+    assert ws.port.checkpoint_tree() == ws.port.checkpoint_tree()
+
+
+@pytest.mark.parametrize("mutation", ["modify", "add_untracked", "delete", "rename"])
+def test_checkpoint_detects_any_change(ws: Workspace, mutation: str) -> None:
+    seed(ws)
+    service = RepositoryService(ws.port)
+    checkpoint = service.checkpoint("freeze")
+    if mutation == "modify":
+        ws.write("src/a.c", "int a = 99;\n")
+    elif mutation == "add_untracked":
+        ws.write("notes/new.txt", "x\n")
+    elif mutation == "delete":
+        ws.delete("src/b.c")
+    else:
+        ws.rename("src/b.c", "src/c.c")
+    with pytest.raises(HarnessError) as info:
+        service.verify_checkpoint(checkpoint)
+    assert info.value.code is ReasonCode.HANDOFF_DIFF_MISMATCH
+
+
+def test_checkpoint_includes_untracked_edits_after_checkpoint(ws: Workspace) -> None:
+    seed(ws)
+    ws.write("scratch.txt", "one\n")
+    service = RepositoryService(ws.port)
+    checkpoint = service.checkpoint()
+    service.verify_checkpoint(checkpoint)
+    ws.write("scratch.txt", "two\n")
+    with pytest.raises(HarnessError):
+        service.verify_checkpoint(checkpoint)
+
+
+def test_checkpoint_ignores_ignored_files(ws: Workspace) -> None:
+    ws.ignore("slprj/")
+    seed(ws)
+    service = RepositoryService(ws.port)
+    checkpoint = service.checkpoint()
+    ws.write("slprj/cache.bin", "derived\n")
+    service.verify_checkpoint(checkpoint)
+
+
+def test_checkpoint_record(ws: Workspace) -> None:
+    head = seed(ws)
+    record = RepositoryService(ws.port).checkpoint("freeze").to_dict()
+    assert record["head_commit"] == head and record["kind"] == "freeze" and record["tree_hash"]
+
+
+def test_checkpoint_leaves_real_index_untouched(git_repo: Path) -> None:
+    ws = CliWorkspace(git_repo)
+    seed(ws)
+    ws.write("src/untracked.c", "x\n")
+    ws.port.checkpoint_tree()
+    assert git(git_repo, "status", "--porcelain").strip() == "?? src/untracked.c"
