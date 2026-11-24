@@ -1,5 +1,5 @@
 # HK-001 plan (§19 format), bootstrapping rule. contract_hash is filled in at
-# lock time (RFC 8785 canonicalisation + SHA-256, computed by a one-off script
+# lock time (RFC 8785 canonicalisation + SHA-256 over the approved contract,
 # until HK-002 provides the contract service).
 api_version: embedded-targets.ai/v1
 kind: FeaturePlan
@@ -7,7 +7,7 @@ kind: FeaturePlan
 metadata:
   feature_id: HK-001
   workflow_id: workflow-HK-001-001
-  contract_hash: null
+  contract_hash: sha256:dd8db87775f0155fb2e0825db6446962992094b5b684d36a25fe642a28293dbb
   created_by: claude-code-implementer
 
 gates:

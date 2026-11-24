@@ -8,7 +8,7 @@ kind: FeatureContract
 metadata:
   id: HK-001
   title: Kernel skeleton
-  owner: feature-owner            # replaced with the approving human's identity
+  owner: feature-owner
   target_context:
     family: none                  # kernel feature; no target family
     release: none
@@ -132,7 +132,7 @@ scope:
     - docs/bootstrap-evidence/HK-001.md
   protected_paths:
     - features/active/**          # the locked contract itself
-    - features/backlog/HK-001.yaml
+    - features/active/HK-001.plan.yaml
     - LICENSE
   qe_test_paths: []
 
@@ -149,5 +149,5 @@ rework:
 
 intake:
   drafted_by: claude-code-implementer   # agent drafted; a human must approve
-  approved_by: null                     # set when the feature owner approves
-  approval_ref: null                    # local approval during bootstrapping
+  approved_by: feature-owner            # human approval recorded 2026-11-24 (session chat)
+  approval_ref: local                   # verification source local (bootstrapping, advisory)
