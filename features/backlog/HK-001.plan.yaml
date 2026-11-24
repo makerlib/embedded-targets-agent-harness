@@ -1,0 +1,113 @@
+# HK-001 plan (§19 format), bootstrapping rule. contract_hash is filled in at
+# lock time (RFC 8785 canonicalisation + SHA-256, computed by a one-off script
+# until HK-002 provides the contract service).
+api_version: embedded-targets.ai/v1
+kind: FeaturePlan
+
+metadata:
+  feature_id: HK-001
+  workflow_id: workflow-HK-001-001
+  contract_hash: null
+  created_by: claude-code-implementer
+
+gates:
+  structural:
+    level: L0
+    command: python -m pytest tests/unit/test_structural.py
+    checks: [schemas are valid draft 2020-12, pyproject metadata, package imports]
+  kernel-pytest:
+    level: L1
+    command: python -m pytest tests
+
+tasks:
+  - id: T-001
+    objective: Packaging, single-source version, console entrypoint, .gitignore.
+    acceptance_criteria: [AC-001]
+    dependencies: []
+    writable_paths: [pyproject.toml, src/et_harness/__init__.py, .gitignore, README.md, CHANGELOG.md]
+    required_tools: [repository.write]
+    expected_evidence: [pytest:test_packaging]
+
+  - id: T-002
+    objective: Reason-code registry and structured error type in common/.
+    acceptance_criteria: [AC-009]
+    dependencies: [T-001]
+    writable_paths: [src/et_harness/common/**, tests/unit/**]
+    required_tools: [repository.write]
+    expected_evidence: [pytest:test_reason_codes]
+
+  - id: T-003
+    objective: Schemas and schema validation helper (CONFIG_INVALID, SCHEMA_VERSION_UNSUPPORTED).
+    acceptance_criteria: [AC-004]
+    dependencies: [T-002]
+    writable_paths: [schemas/harness-config.schema.json, schemas/project-config.schema.json, schemas/orchestration-state.schema.json, src/et_harness/common/**, tests/unit/**, tests/fixtures/**]
+    required_tools: [repository.write]
+    expected_evidence: [pytest:test_schemas, pytest:test_structural]
+
+  - id: T-004
+    objective: Layered configuration service with precedence, no-weakening rule, attribution; harness.yaml defaults.
+    acceptance_criteria: [AC-003]
+    dependencies: [T-003]
+    writable_paths: [src/et_harness/config/**, harness.yaml, tests/unit/**, tests/fixtures/**]
+    required_tools: [repository.write]
+    expected_evidence: [pytest:test_config]
+
+  - id: T-005
+    objective: GitPort, subprocess Git adapter, in-memory fake, shared contract tests.
+    acceptance_criteria: [AC-005]
+    dependencies: [T-002]
+    writable_paths: [src/et_harness/repository/**, adapters/git/**, tests/contract/**, tests/unit/**]
+    required_tools: [repository.write]
+    expected_evidence: [pytest:test_git_contract]
+
+  - id: T-006
+    objective: Audit writer (JSONL, sequence, entry hash chain, redaction).
+    acceptance_criteria: [AC-008]
+    dependencies: [T-002]
+    writable_paths: [src/et_harness/audit/**, tests/unit/**]
+    required_tools: [repository.write]
+    expected_evidence: [pytest:test_audit]
+
+  - id: T-007
+    objective: Atomic state store with optimistic revisions and integrity chain to the audit log.
+    acceptance_criteria: [AC-006, AC-007]
+    dependencies: [T-003, T-006]
+    writable_paths: [src/et_harness/sessions/**, tests/unit/**]
+    required_tools: [repository.write]
+    expected_evidence: [pytest:test_state_store, pytest:test_tamper]
+
+  - id: T-008
+    objective: CLI framework (--json, exit codes, NOT_IMPLEMENTED stubs for §26), `config show-effective`.
+    acceptance_criteria: [AC-002, AC-003]
+    dependencies: [T-004, T-007]
+    writable_paths: [src/et_harness/cli/**, tests/unit/**]
+    required_tools: [repository.write]
+    expected_evidence: [pytest:test_cli]
+
+  - id: T-009
+    objective: Run both gates, write the bootstrap evidence note with pytest results and hashes.
+    acceptance_criteria: [AC-001, AC-002, AC-003, AC-004, AC-005, AC-006, AC-007, AC-008, AC-009]
+    dependencies: [T-008, T-005]
+    writable_paths: [docs/bootstrap-evidence/HK-001.md]
+    required_tools: [repository.write]
+    expected_evidence: [evidence-note]
+
+verification:
+  criteria_to_gates:
+    AC-001: [kernel-pytest]
+    AC-002: [kernel-pytest]
+    AC-003: [kernel-pytest]
+    AC-004: [structural, kernel-pytest]
+    AC-005: [kernel-pytest]
+    AC-006: [kernel-pytest]
+    AC-007: [kernel-pytest]
+    AC-008: [kernel-pytest]
+    AC-009: [kernel-pytest]
+
+approvals: []
+assumptions:
+  - Python 3.11+ reference implementation; runtime deps PyYAML, jsonschema, click.
+  - "Scope is DETECTED only during bootstrapping: no host guards exist yet, so the final diff is checked against allowed_paths by hand (git diff --name-only) in the evidence note."
+  - The repository is hosted on GitHub; the spec's GitLab CI and approval verification arrive in HK-013 and do not affect HK-001.
+risks:
+  - The audit/state integrity chain detects tampering; it cannot prevent it (no ENFORCED tier until HK-010).

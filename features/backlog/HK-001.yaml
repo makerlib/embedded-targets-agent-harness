@@ -1,0 +1,153 @@
+# HK-001 feature contract — drafted under the bootstrapping rule (spec v1.1 §30).
+# The kernel does not exist yet, so this contract is hand-written in the §9.4.1
+# format, verified with pytest results plus a short evidence note, and approved
+# by a human. Once HK-005 passes, the evaluator is re-run over this record.
+api_version: embedded-targets.ai/v1
+kind: FeatureContract
+
+metadata:
+  id: HK-001
+  title: Kernel skeleton
+  owner: feature-owner            # replaced with the approving human's identity
+  target_context:
+    family: none                  # kernel feature; no target family
+    release: none
+
+profile: full                     # lite is ineligible: diff exceeds 5 files / 300 lines (§13.5)
+
+objective: >
+  Deliver the harness kernel skeleton: an installable Python package with a
+  `harness` CLI framework, layered configuration loading with precedence and
+  source attribution, versioned JSON Schemas for harness/project config and
+  orchestration state, a Git repository service behind a port, an atomic state
+  store with a hash integrity chain, an append-only audit writer, and the
+  stable reason-code registry. No orchestration, contracts, gates, packages or
+  agent adapters (those are HK-002 onward).
+
+acceptance_criteria:
+  - id: AC-001
+    statement: >
+      `pip install -e .` installs package `et_harness` with a `harness` console
+      entrypoint; `harness --version` prints the version from a single source
+      and exits 0.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-002
+    statement: >
+      CLI framework: every command supports `--json` structured output and a
+      meaningful exit code. Commands listed in §26 that are not yet built exist
+      as stubs that report NOT_IMPLEMENTED with a non-zero exit code and never
+      report success.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-003
+    statement: >
+      Layered configuration resolves with precedence kernel invariant >
+      organisation > project > feature > persona > user-local; a lower layer
+      cannot weaken a higher-layer control (rejected with a conflict record);
+      every effective setting carries source attribution; `harness config
+      show-effective` renders it as text and JSON.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-004
+    statement: >
+      JSON Schemas (draft 2020-12) exist for harness config, project config and
+      orchestration state. Valid documents pass; missing required keys and
+      unknown keys fail with CONFIG_INVALID; an unsupported api_version fails
+      with SCHEMA_VERSION_UNSUPPORTED.
+    verification_method: gate
+    gates: [structural, kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-005
+    statement: >
+      Repository service behind a `GitPort` interface: repository-root
+      discovery, branch and status inspection, baseline commit capture,
+      repository fingerprint, and enumeration of added, modified, deleted,
+      renamed and copied paths. A Git subprocess adapter and an in-memory fake
+      both satisfy the same contract tests.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-006
+    statement: >
+      Atomic state store: writes are atomic (temp file, fsync, replace); a
+      crash during a write leaves the prior state valid and loadable; updates
+      require the expected revision and a stale revision fails with
+      WORKFLOW_REVISION_CONFLICT; each write records the previous state hash
+      and appends the new state hash to the audit log.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-007
+    statement: >
+      Integrity chain: on every load the state file is verified against the
+      last audit entry; a hand-edited state file, or a truncated or edited
+      audit log, is reported as STATE_TAMPER_DETECTED.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-008
+    statement: >
+      Audit writer: append-only JSON Lines carrying the §9.19 fields plus a
+      sequence number and the previous entry's hash; secrets matching
+      configured patterns are redacted before writing.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-009
+    statement: >
+      Reason-code registry defines every §27 code as a stable enum; the v1.2
+      reserved codes (PACKAGE_REVOKED, SENSITIVE_ARTEFACT_QUARANTINED) are
+      defined and marked as not emitted. Structured errors carry a reason code
+      and context without secrets.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+
+scope:
+  allowed_paths:
+    - pyproject.toml
+    - README.md
+    - CHANGELOG.md
+    - harness.yaml
+    - .gitignore
+    - src/et_harness/__init__.py
+    - src/et_harness/cli/**
+    - src/et_harness/config/**
+    - src/et_harness/repository/**
+    - src/et_harness/sessions/**
+    - src/et_harness/audit/**
+    - src/et_harness/common/**
+    - adapters/git/**
+    - schemas/harness-config.schema.json
+    - schemas/project-config.schema.json
+    - schemas/orchestration-state.schema.json
+    - tests/unit/**
+    - tests/contract/**
+    - tests/fixtures/**
+    - tests/conftest.py
+    - docs/bootstrap-evidence/HK-001.md
+  protected_paths:
+    - features/active/**          # the locked contract itself
+    - features/backlog/HK-001.yaml
+    - LICENSE
+  qe_test_paths: []
+
+verification:
+  required_level: L1
+  required_gates: [structural, kernel-pytest]
+  qe_test_design: off             # no QE agent exists during bootstrapping
+
+approvals:
+  required: []
+
+rework:
+  maximum_cycles: 3
+
+intake:
+  drafted_by: claude-code-implementer   # agent drafted; a human must approve
+  approved_by: null                     # set when the feature owner approves
+  approval_ref: null                    # local approval during bootstrapping
