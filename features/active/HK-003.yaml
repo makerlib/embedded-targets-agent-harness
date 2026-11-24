@@ -1,0 +1,137 @@
+# HK-003 feature contract: orchestration state machine (spec v1.1.1 §13-§16, §30).
+# Last feature under the bootstrapping rule. Package resolution (HK-009),
+# baseline gates (HK-004) and enforcement probes (HK-010) do not exist yet:
+# INITIALISING records them as NOT_IMPLEMENTED checks instead of claiming
+# them, and the evaluator (HK-005) must not issue PASSED while they are open.
+api_version: embedded-targets.ai/v1
+kind: FeatureContract
+
+metadata:
+  id: HK-003
+  title: Orchestration state machine
+  owner: feature-owner
+  target_context:
+    family: none
+    release: none
+
+profile: full
+objective: >
+  Deliver the kernel-owned workflow state machine: the §13 states, the §15
+  transition table, profile-aware ownership, revisioned and audited
+  transitions with §9.19.3 reasons, final-state enforcement, block and resume,
+  tamper handling with last-known-good recovery, and the `harness workflow`
+  commands, so a locked contract can be taken from CREATED to PLANNING.
+
+acceptance_criteria:
+  - id: AC-001
+    statement: >
+      The transition table equals §15 exactly, including the tamper rule;
+      PLAN_REVIEW routes to TEST_DESIGN or DEVELOPING by profile and
+      qe_test_design; any other transition fails with TRANSITION_NOT_ALLOWED
+      and leaves state, revision and audit log unchanged.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-002
+    statement: >
+      State ownership follows §13.2 for both profiles and is recorded with
+      each transition.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-003
+    statement: >
+      Every transition requires the expected revision (stale gives
+      WORKFLOW_REVISION_CONFLICT), increments the revision by one, appends a
+      history entry with a §9.19.3 reason that is legal for that edge, and
+      emits a schema-valid state.transition audit event.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-004
+    statement: >
+      PASSED and FAILED reject any further transition. Blocking records a
+      blocker with §27 reason codes and the resumable state; resume returns
+      only to that state; INCONCLUSIVE resumes only with
+      ADDITIONAL_EVIDENCE_AUTHORISED; abandoning moves BLOCKED to FAILED.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-005
+    statement: >
+      A hand-edited state file is detected on every workflow command: the
+      kernel quarantines the edited file, restores the last-known-good state
+      verified against the audit log, and moves the workflow to BLOCKED with
+      STATE_TAMPER_DETECTED; if no verified state remains it stops without
+      writing.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-006
+    statement: >
+      `harness workflow create` requires exactly one active, lint-clean
+      contract with a valid owner approval. `workflow start` captures a clean
+      baseline, locks contract and scope, runs the initialisation checks
+      available today, records unavailable ones as NOT_IMPLEMENTED, and
+      moves to PLANNING, or to BLOCKED or FAILED with reason codes.
+      `status`, `history`, `block`, `resume` and `cancel` work with --json.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-007
+    statement: >
+      AuditLog.append accepts only §9.19.2 event types; existing audit tests
+      are moved to registered types without reducing the test count.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-008
+    statement: >
+      A fresh process resumes from persisted state, a crash during a
+      transition leaves the previous state valid, and the full sample run's
+      transitions replay through the state machine.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+
+scope:
+  allowed_paths:
+    - src/et_harness/orchestration/**
+    - src/et_harness/sessions/**
+    - src/et_harness/audit/log.py
+    - src/et_harness/cli/**
+    - src/et_harness/common/reason_codes.py
+    - schemas/orchestration-state.schema.json
+    - schemas/scope-lock.schema.json
+    - tests/unit/**
+    - tests/integration/workflow/**
+    - tests/fixtures/**
+    - docs/bootstrap-evidence/HK-003.md
+    - README.md
+    - CHANGELOG.md
+  protected_paths:
+    - features/active/**
+    - features/completed/**
+    - docs/specification/**
+    - src/et_harness/audit/vocabulary.py
+    - schemas/audit-record.schema.json
+    - tools/monitor/**
+  qe_test_paths: []
+
+verification:
+  required_level: L1
+  required_gates: [structural, kernel-pytest]
+  qe_test_design: "off"
+
+approvals:
+  required: []
+
+rework:
+  maximum_cycles: 3
+
+intake:
+  drafted_by: claude-code-implementer
+  approved_by: "feature-owner"
+  approval_ref: "local"
+  approved_at: "2026-11-24T19:25:03Z"
+  approved_content_hash: "sha256:180952f0c3aa8189533a8ff9a383f1b37bcf67360df537462bf5578d5a797179"

@@ -1,0 +1,13 @@
+# Project configuration for the harness repository governing its own
+# development (self-hosting). Local working data under .agent-harness/ is
+# git-ignored; this file is committed (spec §7).
+api_version: embedded-targets.ai/v1
+kind: ProjectConfig
+project:
+  id: embedded-targets-agent-harness
+  name: Embedded Targets agent harness
+harness:
+  version: 0.1.0
+# Until the gate registry exists (HK-004), declare levels of non-built-in gates.
+gate_levels:
+  kernel-pytest: L1
