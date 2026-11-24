@@ -1,0 +1,144 @@
+# HK-015 feature contract: read-only run monitor (spec v1.1.1 §9.22, §9.19, §28.18).
+#
+# Process note: the bootstrapping rule (§30) expects kernel contract and gate
+# commands from HK-004 onward. Those commands are not built yet (HK-002/HK-004
+# report NOT_IMPLEMENTED), so HK-015 uses the same hand-written contract,
+# pytest gates and evidence note as HK-001. It is re-evaluated by the kernel
+# once HK-005 passes.
+#
+# Ordering note: §30 lists HK-003 as a dependency so that kernel-emitted
+# state.transition events exist. The feature owner asked for the monitor
+# before HK-003. HK-015 therefore proves the monitor against the conforming
+# sample run and the events the kernel emits today (state.write,
+# state.write_rolled_back). Kernel conformance for later event types is
+# enforced by the audit-record schema test as each HK feature adds them.
+api_version: embedded-targets.ai/v1
+kind: FeatureContract
+
+metadata:
+  id: HK-015
+  title: Read-only run monitor and audit vocabulary conformance
+  owner: feature-owner
+  target_context:
+    family: none
+    release: none
+
+profile: full                     # lite ineligible: more than 5 changed files
+objective: >
+  Add the read-only run monitor in tools/monitor/ as specified in §9.22, a
+  JSON Schema for the §9.19.1 audit record and §9.19.2 event vocabulary, a
+  sample run that conforms to both, and the §28.18 tests, without giving the
+  monitor any ability to write, approve, override or launch.
+
+acceptance_criteria:
+  - id: AC-001
+    statement: >
+      tools/monitor/ contains index.html, harness_monitor.py, simulate_run.py,
+      sample-run.jsonl and README.md. The server accepts only GET and HEAD,
+      returns 405 for POST, PUT, PATCH and DELETE, returns 404 for any path
+      other than /, /index.html, /api/snapshot and /api/stream, and binds to
+      127.0.0.1 by default, warning when bound elsewhere.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-002
+    statement: >
+      Running the server's snapshot and stream endpoints against a fixture
+      .agent-harness directory leaves every file byte-identical and creates
+      no new file.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-003
+    statement: >
+      The stream holds back a partial trailing audit line until it is
+      complete, emits `reset` when the log shrinks or is replaced, emits
+      `warning` for a malformed line, and emits a `state` event when the
+      state file changes.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-004
+    statement: >
+      schemas/audit-record.schema.json encodes the §9.19.1 envelope and the
+      required fields and details keys for every §9.19.2 event type; unknown
+      event types are rejected by the schema (the kernel may not emit them)
+      while the monitor still displays them. Records written by the kernel's
+      AuditLog and StateStore today validate against it.
+    verification_method: gate
+    gates: [structural, kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-005
+    statement: >
+      sample-run.jsonl validates record by record against the audit-record
+      schema, has a contiguous `sequence` and an intact hash chain (verified
+      by et_harness AuditLog), carries only §27 codes in reason_codes, and
+      carries §9.19.3 transition reasons in details.reason.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-006
+    statement: >
+      simulate_run.py writes only inside the --harness-dir it is given,
+      re-chains hashes after shifting timestamps so its output still
+      verifies, and writes a state file at state/orchestration-state.json
+      that validates against orchestration-state.schema.json. Replaying it
+      through the live stream delivers every event in `sequence` order and
+      the final state revision.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-007
+    statement: >
+      In a headless browser the page orders events by `sequence` (falling
+      back to `seq`), renders an advisory PASSED with its advisory authority
+      and never as authoritative, lists unknown event types, warns on
+      sequence gaps, states that it shows only what reaches the audit log,
+      and offers no control that changes state.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-008
+    statement: >
+      docs/monitor.md covers live, replay and demo modes, setup commands that
+      work from a clean clone, the coverage limits, the security defaults and
+      how to remove remote fonts for air-gapped use.
+    verification_method: human_review
+
+scope:
+  allowed_paths:
+    - tools/monitor/**
+    - schemas/audit-record.schema.json
+    - src/et_harness/audit/**
+    - tests/unit/test_audit_record_schema.py
+    - tests/unit/test_structural.py
+    - tests/integration/monitor/**
+    - tests/fixtures/monitor/**
+    - docs/monitor.md
+    - docs/bootstrap-evidence/HK-015.md
+    - README.md
+    - CHANGELOG.md
+    - pyproject.toml
+  protected_paths:
+    - features/active/**
+    - docs/specification/**
+    - schemas/orchestration-state.schema.json
+    - src/et_harness/sessions/**
+    - src/et_harness/common/reason_codes.py
+  qe_test_paths: []
+
+verification:
+  required_level: L1
+  required_gates: [structural, kernel-pytest]
+  qe_test_design: off             # no QE agent exists yet
+
+approvals:
+  required: []
+
+rework:
+  maximum_cycles: 3
+
+intake:
+  drafted_by: claude-code-implementer
+  approved_by: feature-owner            # human approval recorded 2026-11-24 (session chat)
+  approval_ref: local                   # verification source local (bootstrapping, advisory)
