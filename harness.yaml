@@ -1,0 +1,14 @@
+# Configuration of the harness repository itself (kind HarnessConfig).
+# Built-in kernel defaults and invariants live in et_harness.config.controls;
+# this file only records settings that apply when the harness governs its
+# own development. Validated by the `structural` gate.
+api_version: embedded-targets.ai/v1
+kind: HarnessConfig
+metadata:
+  name: embedded-targets-agent-harness
+  description: Harness kernel repository (self-hosting from HK-004).
+settings:
+  enforcement:
+    minimum_write_tier: DETECTED
+  rework:
+    maximum_cycles: 3

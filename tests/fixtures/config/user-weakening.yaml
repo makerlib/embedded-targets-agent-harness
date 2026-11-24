@@ -1,0 +1,11 @@
+api_version: embedded-targets.ai/v1
+kind: UserPreferences
+metadata:
+  name: lazy-user
+settings:
+  enforcement:
+    minimum_write_tier: ADVISORY
+  rework:
+    maximum_cycles: 10
+  output:
+    format: json

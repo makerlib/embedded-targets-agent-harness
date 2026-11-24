@@ -1,0 +1,9 @@
+api_version: embedded-targets.ai/v1
+kind: OrganisationPolicy
+metadata:
+  name: et-org
+settings:
+  enforcement:
+    minimum_write_tier: ENFORCED
+  rework:
+    maximum_cycles: 2

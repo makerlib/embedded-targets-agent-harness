@@ -1,0 +1,372 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://embedded-targets.ai/schemas/orchestration-state.schema.json",
+  "title": "Orchestration state",
+  "description": "Authoritative workflow state (\u00a716). Written only by the kernel state store.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "kind",
+    "workflow",
+    "ownership",
+    "contract",
+    "repository",
+    "rework",
+    "active_handoff",
+    "blocker",
+    "integrity",
+    "history"
+  ],
+  "properties": {
+    "api_version": {
+      "type": "string",
+      "description": "Schema API version; only embedded-targets.ai/v1 is supported."
+    },
+    "kind": {
+      "const": "OrchestrationState"
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "feature_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "profile": {
+          "enum": [
+            "full",
+            "lite"
+          ]
+        },
+        "current_state": {
+          "enum": [
+            "CREATED",
+            "INITIALISING",
+            "PLANNING",
+            "PLAN_REVIEW",
+            "TEST_DESIGN",
+            "DEVELOPING",
+            "DEVELOPMENT_REVIEW",
+            "VERIFYING",
+            "EVALUATING",
+            "REWORK_PLANNING",
+            "PASSED",
+            "FAILED",
+            "BLOCKED",
+            "INCONCLUSIVE"
+          ]
+        },
+        "previous_state": {
+          "enum": [
+            "CREATED",
+            "INITIALISING",
+            "PLANNING",
+            "PLAN_REVIEW",
+            "TEST_DESIGN",
+            "DEVELOPING",
+            "DEVELOPMENT_REVIEW",
+            "VERIFYING",
+            "EVALUATING",
+            "REWORK_PLANNING",
+            "PASSED",
+            "FAILED",
+            "BLOCKED",
+            "INCONCLUSIVE",
+            null
+          ]
+        },
+        "resumable_state": {
+          "enum": [
+            "CREATED",
+            "INITIALISING",
+            "PLANNING",
+            "PLAN_REVIEW",
+            "TEST_DESIGN",
+            "DEVELOPING",
+            "DEVELOPMENT_REVIEW",
+            "VERIFYING",
+            "EVALUATING",
+            "REWORK_PLANNING",
+            "PASSED",
+            "FAILED",
+            "BLOCKED",
+            "INCONCLUSIVE",
+            null
+          ]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "superseded_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "feature_id",
+        "profile",
+        "current_state",
+        "previous_state",
+        "resumable_state",
+        "revision",
+        "superseded_by"
+      ]
+    },
+    "ownership": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "persona": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "agent_instance": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "host": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lease_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lease_status": {
+          "enum": [
+            "active",
+            "released",
+            "revoked",
+            "expired",
+            null
+          ]
+        }
+      },
+      "required": [
+        "persona",
+        "agent_instance",
+        "host",
+        "lease_id",
+        "lease_status"
+      ]
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hash": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "hash"
+      ]
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "baseline_commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "candidate_commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "baseline_commit",
+        "candidate_commit"
+      ]
+    },
+    "rework": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "current_cycle": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maximum_cycles": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "current_cycle",
+        "maximum_cycles"
+      ]
+    },
+    "active_handoff": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "blocker": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reason_code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "resume_state": {
+              "enum": [
+                "CREATED",
+                "INITIALISING",
+                "PLANNING",
+                "PLAN_REVIEW",
+                "TEST_DESIGN",
+                "DEVELOPING",
+                "DEVELOPMENT_REVIEW",
+                "VERIFYING",
+                "EVALUATING",
+                "REWORK_PLANNING",
+                "PASSED",
+                "FAILED",
+                "BLOCKED",
+                "INCONCLUSIVE",
+                null
+              ]
+            }
+          },
+          "required": [
+            "reason_code"
+          ]
+        }
+      ]
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "previous_state_hash": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "audit_sequence": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "previous_state_hash",
+        "audit_sequence"
+      ]
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "from": {
+            "enum": [
+              "CREATED",
+              "INITIALISING",
+              "PLANNING",
+              "PLAN_REVIEW",
+              "TEST_DESIGN",
+              "DEVELOPING",
+              "DEVELOPMENT_REVIEW",
+              "VERIFYING",
+              "EVALUATING",
+              "REWORK_PLANNING",
+              "PASSED",
+              "FAILED",
+              "BLOCKED",
+              "INCONCLUSIVE"
+            ]
+          },
+          "to": {
+            "enum": [
+              "CREATED",
+              "INITIALISING",
+              "PLANNING",
+              "PLAN_REVIEW",
+              "TEST_DESIGN",
+              "DEVELOPING",
+              "DEVELOPMENT_REVIEW",
+              "VERIFYING",
+              "EVALUATING",
+              "REWORK_PLANNING",
+              "PASSED",
+              "FAILED",
+              "BLOCKED",
+              "INCONCLUSIVE"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "sequence",
+          "from",
+          "to",
+          "reason"
+        ]
+      }
+    }
+  }
+}

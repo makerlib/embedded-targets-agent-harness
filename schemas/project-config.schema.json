@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://embedded-targets.ai/schemas/project-config.schema.json",
+  "title": "Project configuration",
+  "description": "Product repository .agent-harness/project.yaml (\u00a77).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "kind",
+    "project",
+    "harness"
+  ],
+  "properties": {
+    "api_version": {
+      "type": "string",
+      "description": "Schema API version; only embedded-targets.ai/v1 is supported."
+    },
+    "kind": {
+      "const": "ProjectConfig"
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "harness": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        }
+      },
+      "required": [
+        "version"
+      ]
+    },
+    "organisation_policy": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Repository-relative path to an OrganisationPolicy document."
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "features": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1
+        },
+        "handoffs": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "audit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cache": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generated": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "settings": {
+      "$ref": "harness-config.schema.json#/$defs/settings"
+    }
+  }
+}

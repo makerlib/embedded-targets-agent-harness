@@ -1,0 +1,13 @@
+api_version: embedded-targets.ai/v1
+kind: ProjectConfig
+project:
+  id: synthetic-product
+  name: Synthetic product
+harness:
+  version: 0.1.0
+settings:
+  rework:
+    maximum_cycles: 3
+    repeated_failure_threshold: 1
+  output:
+    format: text

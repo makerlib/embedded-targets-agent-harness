@@ -1,0 +1,20 @@
+{
+  "api_version": "embedded-targets.ai/v1",
+  "kind": "OrchestrationState",
+  "workflow": {"id": "workflow-FEATURE-001-001", "feature_id": "FEATURE-001", "profile": "full",
+               "current_state": "DEVELOPING", "previous_state": "TEST_DESIGN",
+               "resumable_state": "DEVELOPING", "revision": 7, "superseded_by": null},
+  "ownership": {"persona": "development", "agent_instance": "dev-001", "host": "claude-code",
+                "lease_id": "lease-001", "lease_status": "active"},
+  "contract": {"path": "features/active/FEATURE-001.yaml",
+               "hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"},
+  "repository": {"baseline_commit": "abc123", "candidate_commit": null},
+  "rework": {"current_cycle": 0, "maximum_cycles": 3},
+  "active_handoff": null,
+  "blocker": null,
+  "integrity": {"previous_state_hash": null, "audit_sequence": 42},
+  "history": [
+    {"sequence": 1, "from": "CREATED", "to": "INITIALISING", "reason": "START_REQUESTED"},
+    {"sequence": 2, "from": "INITIALISING", "to": "PLANNING", "reason": "INITIALISATION_PASSED"}
+  ]
+}

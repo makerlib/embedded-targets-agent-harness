@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://embedded-targets.ai/schemas/harness-config.schema.json",
+  "title": "Harness configuration layer",
+  "description": "HarnessConfig (harness repository), OrganisationPolicy and UserPreferences documents. All carry a settings layer.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "kind",
+    "metadata"
+  ],
+  "properties": {
+    "api_version": {
+      "type": "string",
+      "description": "Schema API version; only embedded-targets.ai/v1 is supported."
+    },
+    "kind": {
+      "enum": [
+        "HarnessConfig",
+        "OrganisationPolicy",
+        "UserPreferences"
+      ]
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "settings": {
+      "$ref": "#/$defs/settings"
+    }
+  },
+  "$defs": {
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tools": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allow_unrestricted_shell": {
+              "type": "boolean"
+            },
+            "output_limit_bytes": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 104857600
+            }
+          }
+        },
+        "packages": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allow_unpinned_git_sources": {
+              "type": "boolean"
+            }
+          }
+        },
+        "verdict": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "local_authority": {
+              "enum": [
+                "advisory"
+              ]
+            }
+          }
+        },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "detect_on_checkpoint": {
+              "type": "boolean"
+            }
+          }
+        },
+        "enforcement": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "minimum_write_tier": {
+              "enum": [
+                "ADVISORY",
+                "DETECTED",
+                "ENFORCED"
+              ]
+            }
+          }
+        },
+        "rework": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "maximum_cycles": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 20
+            },
+            "repeated_failure_threshold": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            }
+          }
+        },
+        "lite": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "max_changed_files": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_changed_lines": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_verification_level": {
+              "enum": [
+                "L0",
+                "L1",
+                "L2",
+                "L3",
+                "L4",
+                "L5",
+                "L6"
+              ]
+            }
+          }
+        },
+        "hook": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "decision_budget_ms": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 30000
+            }
+          }
+        },
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "redaction_patterns": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "uniqueItems": true
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "format": {
+              "enum": [
+                "text",
+                "json"
+              ]
+            }
+          }
+        }
+      },
+      "description": "Layered kernel settings (\u00a79.3). Keys are registered in et_harness.config.controls."
+    }
+  }
+}

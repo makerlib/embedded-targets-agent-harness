@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.venv/
+
+# Harness local working data (spec v1.1 §7): never committed.
+.agent-harness/state/
+.agent-harness/handoffs/
+.agent-harness/audit/
+.agent-harness/cache/
+.agent-harness/evidence/
