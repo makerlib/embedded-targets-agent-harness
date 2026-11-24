@@ -1,0 +1,1066 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Harness Monitor</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: instrument panel. Status strip, state machine, logic-analyser style agent channels, then audit log beside gates and enforcement. */
+:root {
+  --bg: #eef1f5;
+  --panel: #ffffff;
+  --ink: #152130;
+  --muted: #5b6878;
+  --line: #d6dde6;
+  --grid: #e9edf2;
+  --accent: #1f4f8f;
+  --ch-kernel: #5f6b7a;
+  --ch-planner: #7650cf;
+  --ch-qe: #0a857f;
+  --ch-dev: #2c66cf;
+  --ch-eval: #b13f79;
+  --ok: #1b7f47;
+  --bad: #c2352c;
+  --warn: #a96d0f;
+  --ok-bg: #e1f3e8;
+  --bad-bg: #fbe5e3;
+  --warn-bg: #f8eedb;
+  --f-display: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Barlow", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1319; --panel: #151c25; --ink: #e2e8ef; --muted: #94a1b2; --line: #283240; --grid: #1c2430;
+    --accent: #8fb3ee; --ch-kernel: #97a3b2; --ch-planner: #a689f2; --ch-qe: #3fc7bd; --ch-dev: #71a4ff;
+    --ch-eval: #e57eb3; --ok: #55c98b; --bad: #f2766b; --warn: #e3aa45; --ok-bg: #13301f; --bad-bg: #3a1a1a;
+    --warn-bg: #33270f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1319; --panel: #151c25; --ink: #e2e8ef; --muted: #94a1b2; --line: #283240; --grid: #1c2430;
+  --accent: #8fb3ee; --ch-kernel: #97a3b2; --ch-planner: #a689f2; --ch-qe: #3fc7bd; --ch-dev: #71a4ff;
+  --ch-eval: #e57eb3; --ok: #55c98b; --bad: #f2766b; --warn: #e3aa45; --ok-bg: #13301f; --bad-bg: #3a1a1a;
+  --warn-bg: #33270f; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body); }
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
+  z-index: 10; background: var(--bg);
+}
+.app {
+  max-width: 1320px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+  display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr);
+}
+.app > * { min-width: 0; }
+
+/* Header */
+.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
+.ident { display: grid; gap: 4px; min-width: 0; }
+.eyebrow { font: 500 12px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font: 600 clamp(22px, 3.4vw, 30px)/1.15 var(--f-display); text-wrap: balance; }
+.meta { font: 13px/1.4 var(--f-mono); color: var(--muted); overflow-wrap: anywhere; }
+.source { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mode {
+  font: 600 12px/1 var(--f-mono); letter-spacing: .06em; text-transform: uppercase;
+  padding: 7px 10px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel);
+  display: inline-flex; gap: 8px; align-items: center;
+}
+.mode .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.mode.live .dot { background: var(--ok); }
+.mode.down .dot { background: var(--warn); }
+.conn { font-size: 13px; color: var(--muted); }
+
+/* Transport */
+.transport {
+  display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+}
+.btn {
+  font: 500 14px/1 var(--f-body); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 7px 11px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; min-height: 34px;
+}
+.btn:hover { border-color: var(--muted); }
+.btn:focus-visible, select:focus-visible, input:focus-visible, .chip:focus-visible, .log li:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+.btn.primary { background: var(--ink); color: var(--panel); border-color: var(--ink); min-width: 84px; justify-content: center; }
+.btn[disabled] { opacity: .45; cursor: default; }
+.transport select {
+  font: 14px var(--f-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 8px; min-height: 34px;
+}
+.scrub { flex: 1 1 220px; min-width: 0; display: flex; gap: 10px; align-items: center; }
+.scrub input { flex: 1; min-width: 0; accent-color: var(--accent); }
+.pos { font: 13px var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.file-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.file-btn:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.transport .spacer { flex: 1 1 0; }
+
+/* Summary strip */
+.summary { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.tile {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+  display: grid; gap: 4px; align-content: start; min-width: 0;
+}
+.tile .k { font: 500 11px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.tile .v { font: 600 21px/1.2 var(--f-display); overflow-wrap: anywhere; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.tile .v.mono { font: 500 17px/1.3 var(--f-mono); }
+.tile .s { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.tile .s.alert { color: var(--bad); }
+.pdot { width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--muted)); flex: none; }
+.ladder { display: flex; gap: 3px; margin-top: 2px; }
+.ladder span {
+  flex: 1; height: 16px; border-radius: 2px; background: var(--grid); border: 1px solid var(--line);
+  font: 500 9px/14px var(--f-mono); text-align: center; color: var(--muted);
+}
+.ladder span.on { background: var(--ok); border-color: var(--ok); color: var(--panel); }
+.ladder span.req { box-shadow: 0 0 0 2px var(--ink); }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 3px;
+  font: 500 11px/1.4 var(--f-mono); letter-spacing: .03em; white-space: nowrap;
+  background: var(--grid); color: var(--muted); border: 1px solid transparent;
+}
+.pill.ok { background: var(--ok-bg); color: var(--ok); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+.pill.big { font-size: 15px; padding: 3px 9px; }
+
+/* Panels */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px 14px; display: grid; gap: 10px; min-width: 0; }
+.ph { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; justify-content: space-between; }
+h2 { margin: 0; font: 600 15px/1.2 var(--f-display); letter-spacing: .06em; text-transform: uppercase; }
+.hint { font-size: 13px; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); align-items: center; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.legend svg { flex: none; }
+.scroll { overflow-x: auto; min-width: 0; }
+.scroll svg { display: block; }
+#sm { width: 100%; min-width: 900px; height: auto; }
+
+/* SVG */
+svg text { font-family: var(--f-mono); }
+.node rect.box { fill: var(--panel); stroke: var(--line); stroke-width: 1.2; }
+.node rect.bar { fill: var(--c); opacity: .35; }
+.node text { fill: var(--muted); font-size: 10.5px; }
+.node.visited rect.box { stroke: var(--muted); }
+.node.visited rect.bar { opacity: .9; }
+.node.visited text { fill: var(--ink); }
+.node.current rect.box { fill: var(--c); fill-opacity: .14; stroke: var(--c); stroke-width: 2.4; }
+.node.current rect.bar { opacity: 1; }
+.node.current text { fill: var(--ink); font-weight: 500; }
+.node.t-ok rect.box { fill: var(--ok-bg); fill-opacity: 1; stroke: var(--ok); stroke-width: 2.4; }
+.node.t-bad rect.box { fill: var(--bad-bg); fill-opacity: 1; stroke: var(--bad); stroke-width: 2.4; }
+.node.t-warn rect.box { fill: var(--warn-bg); fill-opacity: 1; stroke: var(--warn); stroke-width: 2.4; }
+.node .count { fill: var(--ink); font-size: 10px; font-weight: 500; }
+.ring { fill: none; stroke: var(--c); stroke-width: 2; opacity: .5; }
+@media (prefers-reduced-motion: no-preference) {
+  .ring { animation: ring 1.6s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+  @keyframes ring { from { opacity: .55; transform: scale(1); } to { opacity: 0; transform: scale(1.12, 1.3); } }
+}
+.edge { fill: none; stroke: var(--line); stroke-width: 1.2; }
+.edge.on { stroke: var(--ink); stroke-width: 1.6; }
+.edge.dash { stroke-dasharray: 4 4; }
+.elabel { fill: var(--muted); font-size: 10px; }
+.elabel.on { fill: var(--ink); }
+.ah { fill: var(--line); }
+.ah.on { fill: var(--ink); }
+
+.band rect { fill: var(--c); opacity: .2; }
+.band text { fill: var(--ink); font-size: 10px; }
+.lane-sep { stroke: var(--line); stroke-width: 1; }
+.gridline { stroke: var(--grid); stroke-width: 1; }
+.lane-label { fill: var(--ink); font-family: var(--f-display); font-size: 14px; font-weight: 600; }
+.lane-sub { fill: var(--muted); font-size: 10px; }
+.sig { fill: none; stroke: var(--c); stroke-width: 1.8; stroke-linejoin: miter; }
+.sig.ro { stroke-dasharray: 5 3; }
+.sigfill { fill: var(--c); opacity: .1; }
+.siglabel { fill: var(--ink); font-size: 10px; }
+.axis text { fill: var(--muted); font-size: 10px; }
+.axis line { stroke: var(--line); }
+.cursor { stroke: var(--accent); stroke-width: 1.4; stroke-dasharray: 3 3; }
+.cursor-label { fill: var(--accent); font-size: 10px; font-weight: 500; }
+.mk { cursor: pointer; }
+.mk .hit { fill: transparent; }
+.mk.gate-ok path { fill: var(--ok); }
+.mk.gate-bad path { fill: var(--bad); }
+.mk.gate-warn path { fill: var(--warn); }
+.mk.gate-other path { fill: var(--muted); }
+.mk path, .mk circle.v { stroke: var(--panel); stroke-width: 1; }
+.mk.deny line { stroke: var(--bad); stroke-width: 2.2; stroke-linecap: round; }
+.mk.allow line { stroke: var(--muted); stroke-width: 1.4; }
+.mk.exec rect { fill: var(--muted); }
+.mk.hand path { fill: var(--c); }
+.mk.acc path { fill: var(--ok); }
+.mk.rej path { fill: var(--bad); }
+.mk.verdict-ok circle.v { fill: var(--ok); }
+.mk.verdict-bad circle.v { fill: var(--bad); }
+.mk.verdict-warn circle.v { fill: var(--warn); }
+.mk.misc circle.v { fill: var(--muted); }
+.mk .sel-ring { fill: none; stroke: var(--accent); stroke-width: 2; }
+
+/* Lower grid */
+.cols { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1000px) { .cols { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); align-items: start; } }
+.side { display: grid; gap: 16px; min-width: 0; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font: 500 13px/1 var(--f-body); color: var(--muted); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 999px; padding: 6px 11px; cursor: pointer;
+}
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.chip .n { font-family: var(--f-mono); font-size: 11px; margin-left: 4px; opacity: .8; }
+.log { list-style: none; margin: 0; padding: 0; max-height: 560px; overflow-y: auto; border-top: 1px solid var(--line); }
+.log li {
+  display: grid; grid-template-columns: 70px 12px minmax(0, 1fr) auto; gap: 4px 10px; align-items: baseline;
+  padding: 8px 6px; border-bottom: 1px solid var(--grid); cursor: pointer;
+}
+.log li:hover { background: var(--bg); }
+.log li.sel { background: var(--bg); box-shadow: inset 3px 0 0 var(--accent); }
+.log li.new { animation: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .log li.new { animation: flash 1.2s ease-out; }
+  @keyframes flash { from { background: var(--warn-bg); } to { background: transparent; } }
+}
+.log .t { font: 12px var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.log .pd { width: 9px; height: 9px; border-radius: 50%; background: var(--c); align-self: center; }
+.log .body { min-width: 0; display: grid; gap: 3px; }
+.log .line1 { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; }
+.log .et { font: 11px var(--f-mono); color: var(--muted); }
+.log .who { font-size: 13px; font-weight: 600; }
+.log .txt { font-size: 14px; overflow-wrap: anywhere; }
+.log .txt code { font-family: var(--f-mono); font-size: 12.5px; }
+.log .rc { display: flex; flex-wrap: wrap; gap: 4px; }
+.log .res { align-self: start; }
+.empty { color: var(--muted); font-size: 14px; padding: 16px 6px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font: 500 11px/1.2 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 6px 6px; border-bottom: 1px solid var(--line); }
+td { padding: 8px 6px; border-bottom: 1px solid var(--grid); vertical-align: middle; }
+td.mono { font: 12.5px var(--f-mono); overflow-wrap: anywhere; }
+.att { display: flex; gap: 4px; flex-wrap: wrap; }
+.att i {
+  width: 12px; height: 12px; border-radius: 2px; display: inline-block;
+  border: 2px solid var(--c); background: var(--c);
+}
+.att i.dev { background: transparent; }
+.tier { font: 500 11px/1.4 var(--f-mono); padding: 2px 6px; border-radius: 3px; white-space: nowrap; display: inline-block; }
+.tier.ENFORCED { background: var(--ink); color: var(--panel); }
+.tier.DETECTED { border: 1px solid var(--ink); color: var(--ink); }
+.tier.ADVISORY { border: 1px dashed var(--muted); color: var(--muted); }
+.note { font-size: 13px; color: var(--muted); margin: 0; }
+
+footer { font-size: 13px; color: var(--muted); display: grid; gap: 4px; max-width: 80ch; }
+
+@media (max-width: 520px) {
+  .log li { grid-template-columns: 58px 10px minmax(0, 1fr); }
+  .log .res { grid-column: 3; justify-self: start; }
+  .tile .v { font-size: 19px; }
+}
+</style>
+</head>
+<body>
+
+
+<div class="app">
+  <header class="top">
+    <div class="ident">
+      <div class="eyebrow">Harness Monitor</div>
+      <h1 id="title">Waiting for a workflow</h1>
+      <div class="meta" id="meta">No audit events yet</div>
+    </div>
+    <div class="source">
+      <span class="mode" id="mode"><span class="dot"></span><span id="mode-text">Demo replay</span></span>
+      <span class="conn" id="conn"></span>
+    </div>
+  </header>
+
+  <div class="transport" id="transport">
+    <button class="btn" id="b-restart" type="button" title="Back to the first event">⏮ Start</button>
+    <button class="btn" id="b-back" type="button" title="Previous event" aria-label="Previous event">◀</button>
+    <button class="btn primary" id="b-play" type="button">▶ Play</button>
+    <button class="btn" id="b-fwd" type="button" title="Next event" aria-label="Next event">▶</button>
+    <select id="speed" aria-label="Replay speed">
+      <option value="0.5">0.5×</option>
+      <option value="1" selected>1×</option>
+      <option value="2">2×</option>
+      <option value="4">4×</option>
+    </select>
+    <div class="scrub">
+      <input type="range" id="scrub" min="1" max="1" value="1" aria-label="Replay position">
+      <span class="pos" id="pos">–</span>
+    </div>
+    <label class="btn file-btn" for="file">Open audit file
+      <input type="file" id="file" accept=".jsonl,.ndjson,.json,.txt,.log">
+    </label>
+  </div>
+
+  <section class="summary" aria-label="Current status" id="summary"></section>
+
+  <section class="panel" aria-labelledby="h-sm">
+    <div class="ph">
+      <h2 id="h-sm">State machine</h2>
+      <div class="legend">
+        <span><svg width="22" height="12" aria-hidden="true"><rect x="1" y="1" width="20" height="10" rx="2" style="fill:var(--ch-dev);fill-opacity:.14;stroke:var(--ch-dev);stroke-width:2"></rect></svg>Current, coloured by owner</span>
+        <span><svg width="22" height="12" aria-hidden="true"><rect x="1" y="1" width="20" height="10" rx="2" style="fill:var(--panel);stroke:var(--muted)"></rect></svg>Visited</span>
+        <span><svg width="22" height="12" aria-hidden="true"><line x1="1" y1="6" x2="21" y2="6" style="stroke:var(--ink);stroke-width:1.6"></line></svg>Transition taken</span>
+      </div>
+    </div>
+    <div class="scroll"><svg id="sm" viewBox="0 0 1252 240" role="img" aria-label="Orchestration state machine"></svg></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-ch">
+    <div class="ph">
+      <h2 id="h-ch">Agent channels</h2>
+      <div class="legend" id="ch-legend">
+        <span><svg width="14" height="14" aria-hidden="true"><path d="M7 1 L13 7 L7 13 L1 7 Z" style="fill:var(--ok)"></path></svg>Gate attempt</span>
+        <span><svg width="14" height="14" aria-hidden="true"><line x1="3" y1="3" x2="11" y2="11" style="stroke:var(--bad);stroke-width:2.2;stroke-linecap:round"></line><line x1="11" y1="3" x2="3" y2="11" style="stroke:var(--bad);stroke-width:2.2;stroke-linecap:round"></line></svg>Action blocked</span>
+        <span><svg width="14" height="14" aria-hidden="true"><path d="M3 2 L12 7 L3 12 Z" style="fill:var(--ch-kernel)"></path></svg>Handoff</span>
+        <span><svg width="14" height="14" aria-hidden="true"><circle cx="7" cy="7" r="5" style="fill:var(--ok)"></circle></svg>Evaluation</span>
+        <span class="hint">High level = holds the modifying lease</span>
+      </div>
+    </div>
+    <div class="scroll" id="lanes-wrap"><svg id="lanes" role="img" aria-label="Agent activity over time"></svg></div>
+  </section>
+
+  <div class="cols">
+    <section class="panel" aria-labelledby="h-log">
+      <div class="ph">
+        <h2 id="h-log">Audit events</h2>
+        <span class="hint">Newest first. Select an event to find it on the channels.</span>
+      </div>
+      <div class="filters" id="filters" role="group" aria-label="Filter events"></div>
+      <ol class="log" id="log"></ol>
+    </section>
+    <div class="side">
+      <section class="panel" aria-labelledby="h-gates">
+        <h2 id="h-gates">Gates</h2>
+        <table>
+          <thead><tr><th>Gate</th><th>Level</th><th>Attempts</th><th>Latest</th></tr></thead>
+          <tbody id="gates"></tbody>
+        </table>
+        <p class="note">Filled square: QE or kernel run. Hollow: Development check, which does not count toward the verification level.</p>
+      </section>
+      <section class="panel" aria-labelledby="h-enf">
+        <h2 id="h-enf">Enforcement tiers</h2>
+        <table>
+          <thead id="enf-head"></thead>
+          <tbody id="enf"></tbody>
+        </table>
+        <p class="note">From the probes run at initialisation (spec §3.11). Enforced: blocked before it runs. Detected: caught at the next checkpoint. Advisory: instructions only.</p>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <div>Read-only. This page reads the audit log and the workflow state file. It never writes harness state and has no approve or override controls.</div>
+    <div id="foot-note">Showing a built-in sample run. Open an audit.jsonl from a real run, or start the local monitor server to follow a run live.</div>
+  </footer>
+</div>
+
+<script id="sample-run" type="application/x-ndjson">
+{"seq":1,"timestamp":"2026-11-24T10:00:00+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"CREATED","event_type":"workflow.created","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"title":"Add ADC trigger source option to reference driver block","profile":"full","required_level":"L3","maximum_rework_cycles":3,"target":"c2000"}}
+{"seq":2,"timestamp":"2026-11-24T10:00:04+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"INITIALISING","event_type":"state.transition","action":"CREATED -> INITIALISING","tool":null,"package":null,"result":"ok","reason_codes":["START_REQUESTED"],"evidence":[],"approval_id":null,"details":{"from":"CREATED","to":"INITIALISING"}}
+{"seq":3,"timestamp":"2026-11-24T10:00:21+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"INITIALISING","event_type":"package.resolved","action":"4 packages locked","tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"packages":["matlab-unittest@1.0.0","codegen-compile-reference@0.3.0","c2000-configuration@2.3.0","simulink-model-diff@0.1.0"]}}
+{"seq":4,"timestamp":"2026-11-24T10:00:40+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"INITIALISING","event_type":"enforcement.probe","action":"write_outside_scope","tool":null,"package":null,"result":"ENFORCED","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"claude-code"}}
+{"seq":5,"timestamp":"2026-11-24T10:00:41+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"INITIALISING","event_type":"enforcement.probe","action":"protected_paths","tool":null,"package":null,"result":"ENFORCED","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"claude-code"}}
+{"seq":6,"timestamp":"2026-11-24T10:00:42+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"INITIALISING","event_type":"enforcement.probe","action":"kernel_state","tool":null,"package":null,"result":"DETECTED","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"claude-code"}}
+{"seq":7,"timestamp":"2026-11-24T10:00:43+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"INITIALISING","event_type":"enforcement.probe","action":"shell_commands","tool":null,"package":null,"result":"ADVISORY","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"claude-code"}}
+{"seq":8,"timestamp":"2026-11-24T10:00:44+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"INITIALISING","event_type":"enforcement.probe","action":"network","tool":null,"package":null,"result":"ADVISORY","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"claude-code"}}
+{"seq":9,"timestamp":"2026-11-24T10:00:46+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"INITIALISING","event_type":"enforcement.probe","action":"write_outside_scope","tool":null,"package":null,"result":"DETECTED","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"codex"}}
+{"seq":10,"timestamp":"2026-11-24T10:00:47+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"INITIALISING","event_type":"enforcement.probe","action":"protected_paths","tool":null,"package":null,"result":"DETECTED","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"codex"}}
+{"seq":11,"timestamp":"2026-11-24T10:00:48+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"INITIALISING","event_type":"enforcement.probe","action":"kernel_state","tool":null,"package":null,"result":"DETECTED","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"codex"}}
+{"seq":12,"timestamp":"2026-11-24T10:00:49+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"INITIALISING","event_type":"enforcement.probe","action":"shell_commands","tool":null,"package":null,"result":"ADVISORY","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"codex"}}
+{"seq":13,"timestamp":"2026-11-24T10:00:50+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"INITIALISING","event_type":"enforcement.probe","action":"network","tool":null,"package":null,"result":"ENFORCED","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"codex"}}
+{"seq":14,"timestamp":"2026-11-24T10:01:30+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"INITIALISING","event_type":"gate.attempt","action":"structural","tool":"harness.schema-validator","package":null,"result":"PASSED","reason_codes":[],"evidence":["gates/structural/attempt-001.yaml"],"approval_id":null,"details":{"level":"L0","attempt":1,"purpose":"baseline"}}
+{"seq":15,"timestamp":"2026-11-24T10:01:35+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"PLANNING","event_type":"state.transition","action":"INITIALISING -> PLANNING","tool":null,"package":null,"result":"ok","reason_codes":["INITIALISATION_PASSED"],"evidence":[],"approval_id":null,"details":{"from":"INITIALISING","to":"PLANNING"}}
+{"seq":16,"timestamp":"2026-11-24T10:01:36+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-planner-001","feature_id":"FEATURE-001","persona":"planner","agent_instance":"planner-001","state":"PLANNING","event_type":"lease.acquired","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"claude-code","lease_id":"lease-001","mode":"exclusive-modifying"}}
+{"seq":17,"timestamp":"2026-11-24T10:04:10+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-planner-001","feature_id":"FEATURE-001","persona":"planner","agent_instance":"planner-001","state":"PLANNING","event_type":"tool.decision","action":"src/blocks/adc/**","tool":"repository.read","package":null,"result":"ALLOW","reason_codes":[],"evidence":[],"approval_id":null,"details":{}}
+{"seq":18,"timestamp":"2026-11-24T10:06:50+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-planner-001","feature_id":"FEATURE-001","persona":"planner","agent_instance":"planner-001","state":"PLANNING","event_type":"handoff.submitted","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"handoff_id":"handoff-plan-001","to_persona":"kernel","summary":"Plan with 3 tasks covering AC-001 to AC-003"}}
+{"seq":19,"timestamp":"2026-11-24T10:06:51+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-planner-001","feature_id":"FEATURE-001","persona":"planner","agent_instance":"planner-001","state":"PLANNING","event_type":"lease.released","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"claude-code","lease_id":"lease-001","mode":"exclusive-modifying"}}
+{"seq":20,"timestamp":"2026-11-24T10:06:51+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"PLAN_REVIEW","event_type":"state.transition","action":"PLANNING -> PLAN_REVIEW","tool":null,"package":null,"result":"ok","reason_codes":["PLAN_SUBMITTED"],"evidence":[],"approval_id":null,"details":{"from":"PLANNING","to":"PLAN_REVIEW"}}
+{"seq":21,"timestamp":"2026-11-24T10:06:58+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"PLAN_REVIEW","event_type":"handoff.accepted","action":null,"tool":null,"package":null,"result":"ACCEPTED","reason_codes":[],"evidence":[],"approval_id":null,"details":{"handoff_id":"handoff-plan-001","summary":"Every criterion maps to a gate; writable paths inside scope"}}
+{"seq":22,"timestamp":"2026-11-24T10:06:58+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"TEST_DESIGN","event_type":"state.transition","action":"PLAN_REVIEW -> TEST_DESIGN","tool":null,"package":null,"result":"ok","reason_codes":["PLAN_ACCEPTED"],"evidence":[],"approval_id":null,"details":{"from":"PLAN_REVIEW","to":"TEST_DESIGN"}}
+{"seq":23,"timestamp":"2026-11-24T10:06:59+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-qe-001","feature_id":"FEATURE-001","persona":"qe","agent_instance":"qe-001","state":"TEST_DESIGN","event_type":"lease.acquired","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"codex","lease_id":"lease-002","mode":"exclusive-modifying"}}
+{"seq":24,"timestamp":"2026-11-24T10:09:15+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-qe-001","feature_id":"FEATURE-001","persona":"qe","agent_instance":"qe-001","state":"TEST_DESIGN","event_type":"tool.decision","action":"qe-tests/adc/tAdcTriggerSource.m","tool":"repository.write","package":null,"result":"ALLOW","reason_codes":[],"evidence":[],"approval_id":null,"details":{}}
+{"seq":25,"timestamp":"2026-11-24T10:10:20+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-qe-001","feature_id":"FEATURE-001","persona":"qe","agent_instance":"qe-001","state":"TEST_DESIGN","event_type":"tool.executed","action":"qe-tests/adc on baseline","tool":"matlab.run-tests","package":null,"result":"FAILED","reason_codes":[],"evidence":[],"approval_id":null,"details":{"expected":"fail","tests":{"run":4,"passed":0,"failed":4},"summary":"4 acceptance tests fail on the baseline, as required"}}
+{"seq":26,"timestamp":"2026-11-24T10:11:05+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-qe-001","feature_id":"FEATURE-001","persona":"qe","agent_instance":"qe-001","state":"TEST_DESIGN","event_type":"handoff.submitted","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"handoff_id":"handoff-tests-001","to_persona":"development","summary":"4 acceptance tests mapped to AC-001 and AC-002"}}
+{"seq":27,"timestamp":"2026-11-24T10:11:06+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-qe-001","feature_id":"FEATURE-001","persona":"qe","agent_instance":"qe-001","state":"TEST_DESIGN","event_type":"lease.released","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"codex","lease_id":"lease-002","mode":"exclusive-modifying"}}
+{"seq":28,"timestamp":"2026-11-24T10:11:06+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"DEVELOPING","event_type":"state.transition","action":"TEST_DESIGN -> DEVELOPING","tool":null,"package":null,"result":"ok","reason_codes":["TESTS_ACCEPTED"],"evidence":[],"approval_id":null,"details":{"from":"TEST_DESIGN","to":"DEVELOPING"}}
+{"seq":29,"timestamp":"2026-11-24T10:11:07+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-dev-001","feature_id":"FEATURE-001","persona":"development","agent_instance":"dev-001","state":"DEVELOPING","event_type":"lease.acquired","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"claude-code","lease_id":"lease-003","mode":"exclusive-modifying"}}
+{"seq":30,"timestamp":"2026-11-24T10:14:30+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-dev-001","feature_id":"FEATURE-001","persona":"development","agent_instance":"dev-001","state":"DEVELOPING","event_type":"tool.decision","action":"src/blocks/adc/adc_mask.m","tool":"Edit","package":null,"result":"ALLOW","reason_codes":[],"evidence":[],"approval_id":null,"details":{"via":"pre-tool hook"}}
+{"seq":31,"timestamp":"2026-11-24T10:16:02+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-dev-001","feature_id":"FEATURE-001","persona":"development","agent_instance":"dev-001","state":"DEVELOPING","event_type":"tool.decision","action":"qe-tests/adc/tAdcTriggerSource.m","tool":"Edit","package":null,"result":"DENY","reason_codes":["QE_TEST_MODIFIED"],"evidence":[],"approval_id":null,"details":{"via":"pre-tool hook"}}
+{"seq":32,"timestamp":"2026-11-24T10:17:45+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-dev-001","feature_id":"FEATURE-001","persona":"development","agent_instance":"dev-001","state":"DEVELOPING","event_type":"tool.decision","action":"src/blocks/adc/adc_trigger.tlc","tool":"Edit","package":null,"result":"ALLOW","reason_codes":[],"evidence":[],"approval_id":null,"details":{"via":"pre-tool hook"}}
+{"seq":33,"timestamp":"2026-11-24T10:19:40+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-dev-001","feature_id":"FEATURE-001","persona":"development","agent_instance":"dev-001","state":"DEVELOPING","event_type":"tool.decision","action":"src/blocks/adc/legacy/adc_v1.tlc","tool":"Write","package":null,"result":"DENY","reason_codes":["PROTECTED_PATH_CHANGED"],"evidence":[],"approval_id":null,"details":{"via":"pre-tool hook"}}
+{"seq":34,"timestamp":"2026-11-24T10:24:10+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-dev-001","feature_id":"FEATURE-001","persona":"development","agent_instance":"dev-001","state":"DEVELOPING","event_type":"gate.attempt","action":"matlab-unittest","tool":"matlab.run-tests","package":null,"result":"PASSED","reason_codes":[],"evidence":[],"approval_id":null,"details":{"level":"L1","attempt":1,"purpose":"development check","tests":{"run":42,"passed":42,"failed":0}}}
+{"seq":35,"timestamp":"2026-11-24T10:25:00+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-dev-001","feature_id":"FEATURE-001","persona":"development","agent_instance":"dev-001","state":"DEVELOPING","event_type":"handoff.submitted","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"handoff_id":"handoff-dev-to-qe-001","to_persona":"qe","summary":"3 files changed, 96 lines"}}
+{"seq":36,"timestamp":"2026-11-24T10:25:01+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-dev-001","feature_id":"FEATURE-001","persona":"development","agent_instance":"dev-001","state":"DEVELOPING","event_type":"lease.released","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"claude-code","lease_id":"lease-003","mode":"exclusive-modifying"}}
+{"seq":37,"timestamp":"2026-11-24T10:25:01+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"DEVELOPMENT_REVIEW","event_type":"state.transition","action":"DEVELOPING -> DEVELOPMENT_REVIEW","tool":null,"package":null,"result":"ok","reason_codes":["HANDOFF_SUBMITTED"],"evidence":[],"approval_id":null,"details":{"from":"DEVELOPING","to":"DEVELOPMENT_REVIEW"}}
+{"seq":38,"timestamp":"2026-11-24T10:25:20+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"DEVELOPMENT_REVIEW","event_type":"handoff.accepted","action":null,"tool":null,"package":null,"result":"ACCEPTED","reason_codes":[],"evidence":[],"approval_id":null,"details":{"handoff_id":"handoff-dev-to-qe-001","summary":"Diff matches claim; no derived artefacts; test count 42 vs baseline 38"}}
+{"seq":39,"timestamp":"2026-11-24T10:25:20+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"VERIFYING","event_type":"state.transition","action":"DEVELOPMENT_REVIEW -> VERIFYING","tool":null,"package":null,"result":"ok","reason_codes":["HANDOFF_ACCEPTED"],"evidence":[],"approval_id":null,"details":{"from":"DEVELOPMENT_REVIEW","to":"VERIFYING"}}
+{"seq":40,"timestamp":"2026-11-24T10:25:21+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-qe-002","feature_id":"FEATURE-001","persona":"qe","agent_instance":"qe-002","state":"VERIFYING","event_type":"lease.acquired","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"codex","lease_id":"lease-004","mode":"exclusive-modifying"}}
+{"seq":41,"timestamp":"2026-11-24T10:27:00+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-qe-002","feature_id":"FEATURE-001","persona":"qe","agent_instance":"qe-002","state":"VERIFYING","event_type":"gate.attempt","action":"structural","tool":"harness.schema-validator","package":null,"result":"PASSED","reason_codes":[],"evidence":[],"approval_id":null,"details":{"level":"L0","attempt":2}}
+{"seq":42,"timestamp":"2026-11-24T10:31:40+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-qe-002","feature_id":"FEATURE-001","persona":"qe","agent_instance":"qe-002","state":"VERIFYING","event_type":"gate.attempt","action":"matlab-unittest","tool":"matlab.run-tests","package":null,"result":"PASSED","reason_codes":[],"evidence":["gates/matlab-unittest/attempt-002.yaml","test-results/junit.xml"],"approval_id":null,"details":{"level":"L1","attempt":2,"tests":{"run":46,"passed":46,"failed":0}}}
+{"seq":43,"timestamp":"2026-11-24T10:38:15+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-qe-002","feature_id":"FEATURE-001","persona":"qe","agent_instance":"qe-002","state":"VERIFYING","event_type":"gate.attempt","action":"codegen-compile-reference","tool":"codegen.build","package":null,"result":"FAILED","reason_codes":[],"evidence":["gates/codegen-compile-reference/attempt-001.yaml","generated-artefacts/build.log"],"approval_id":null,"details":{"level":"L3","attempt":1,"failure_signature":"undefined reference to AdcTriggerSel in adc_init.c","summary":"Code generated; compile failed"}}
+{"seq":44,"timestamp":"2026-11-24T10:38:40+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-qe-002","feature_id":"FEATURE-001","persona":"qe","agent_instance":"qe-002","state":"VERIFYING","event_type":"handoff.submitted","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"handoff_id":"handoff-qe-result-001","to_persona":"evaluator","summary":"L0 and L1 passed; L3 failed"}}
+{"seq":45,"timestamp":"2026-11-24T10:38:41+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-qe-002","feature_id":"FEATURE-001","persona":"qe","agent_instance":"qe-002","state":"VERIFYING","event_type":"lease.released","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"codex","lease_id":"lease-004","mode":"exclusive-modifying"}}
+{"seq":46,"timestamp":"2026-11-24T10:38:41+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"EVALUATING","event_type":"state.transition","action":"VERIFYING -> EVALUATING","tool":null,"package":null,"result":"ok","reason_codes":["QE_RESULT_SUBMITTED"],"evidence":[],"approval_id":null,"details":{"from":"VERIFYING","to":"EVALUATING"}}
+{"seq":47,"timestamp":"2026-11-24T10:38:45+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"evaluator","agent_instance":null,"state":"EVALUATING","event_type":"evaluation.result","action":null,"tool":null,"package":null,"result":"FAILED","reason_codes":["GATE_FAILED"],"evidence":[],"approval_id":null,"details":{"failed_gates":["codegen-compile-reference"],"rework_allowed":true,"summary":"Mandatory L3 gate failed; rework cycle 1 of 3 allowed"}}
+{"seq":48,"timestamp":"2026-11-24T10:38:46+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"REWORK_PLANNING","event_type":"state.transition","action":"EVALUATING -> REWORK_PLANNING","tool":null,"package":null,"result":"ok","reason_codes":["REWORK_ALLOWED"],"evidence":[],"approval_id":null,"details":{"from":"EVALUATING","to":"REWORK_PLANNING"}}
+{"seq":49,"timestamp":"2026-11-24T10:38:47+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-planner-002","feature_id":"FEATURE-001","persona":"planner","agent_instance":"planner-002","state":"REWORK_PLANNING","event_type":"lease.acquired","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"claude-code","lease_id":"lease-005","mode":"exclusive-modifying"}}
+{"seq":50,"timestamp":"2026-11-24T10:40:30+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-planner-002","feature_id":"FEATURE-001","persona":"planner","agent_instance":"planner-002","state":"REWORK_PLANNING","event_type":"handoff.submitted","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"handoff_id":"handoff-rework-001","to_persona":"development","cycle":1,"summary":"1 task: declare AdcTriggerSel in TLC; rerun matlab-unittest and codegen-compile-reference"}}
+{"seq":51,"timestamp":"2026-11-24T10:40:31+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-planner-002","feature_id":"FEATURE-001","persona":"planner","agent_instance":"planner-002","state":"REWORK_PLANNING","event_type":"lease.released","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"claude-code","lease_id":"lease-005","mode":"exclusive-modifying"}}
+{"seq":52,"timestamp":"2026-11-24T10:40:31+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"DEVELOPING","event_type":"state.transition","action":"REWORK_PLANNING -> DEVELOPING","tool":null,"package":null,"result":"ok","reason_codes":["REWORK_ACCEPTED"],"evidence":[],"approval_id":null,"details":{"from":"REWORK_PLANNING","to":"DEVELOPING"}}
+{"seq":53,"timestamp":"2026-11-24T10:40:32+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-dev-002","feature_id":"FEATURE-001","persona":"development","agent_instance":"dev-002","state":"DEVELOPING","event_type":"lease.acquired","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"claude-code","lease_id":"lease-006","mode":"exclusive-modifying"}}
+{"seq":54,"timestamp":"2026-11-24T10:44:50+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-dev-002","feature_id":"FEATURE-001","persona":"development","agent_instance":"dev-002","state":"DEVELOPING","event_type":"tool.decision","action":"src/blocks/adc/tlc/adc_init.tlc","tool":"Edit","package":null,"result":"ALLOW","reason_codes":[],"evidence":[],"approval_id":null,"details":{"via":"pre-tool hook"}}
+{"seq":55,"timestamp":"2026-11-24T10:47:10+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-dev-002","feature_id":"FEATURE-001","persona":"development","agent_instance":"dev-002","state":"DEVELOPING","event_type":"gate.attempt","action":"codegen-compile-reference","tool":"codegen.build","package":null,"result":"PASSED","reason_codes":[],"evidence":[],"approval_id":null,"details":{"level":"L3","attempt":2,"purpose":"development check"}}
+{"seq":56,"timestamp":"2026-11-24T10:47:40+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-dev-002","feature_id":"FEATURE-001","persona":"development","agent_instance":"dev-002","state":"DEVELOPING","event_type":"handoff.submitted","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"handoff_id":"handoff-dev-to-qe-002","to_persona":"qe","summary":"1 file changed, 6 lines"}}
+{"seq":57,"timestamp":"2026-11-24T10:47:41+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-dev-002","feature_id":"FEATURE-001","persona":"development","agent_instance":"dev-002","state":"DEVELOPING","event_type":"lease.released","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"claude-code","lease_id":"lease-006","mode":"exclusive-modifying"}}
+{"seq":58,"timestamp":"2026-11-24T10:47:41+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"DEVELOPMENT_REVIEW","event_type":"state.transition","action":"DEVELOPING -> DEVELOPMENT_REVIEW","tool":null,"package":null,"result":"ok","reason_codes":["HANDOFF_SUBMITTED"],"evidence":[],"approval_id":null,"details":{"from":"DEVELOPING","to":"DEVELOPMENT_REVIEW"}}
+{"seq":59,"timestamp":"2026-11-24T10:47:55+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"DEVELOPMENT_REVIEW","event_type":"handoff.accepted","action":null,"tool":null,"package":null,"result":"ACCEPTED","reason_codes":[],"evidence":[],"approval_id":null,"details":{"handoff_id":"handoff-dev-to-qe-002","summary":"Diff matches claim; scope intact"}}
+{"seq":60,"timestamp":"2026-11-24T10:47:55+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"VERIFYING","event_type":"state.transition","action":"DEVELOPMENT_REVIEW -> VERIFYING","tool":null,"package":null,"result":"ok","reason_codes":["HANDOFF_ACCEPTED"],"evidence":[],"approval_id":null,"details":{"from":"DEVELOPMENT_REVIEW","to":"VERIFYING"}}
+{"seq":61,"timestamp":"2026-11-24T10:47:56+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-qe-003","feature_id":"FEATURE-001","persona":"qe","agent_instance":"qe-003","state":"VERIFYING","event_type":"lease.acquired","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"codex","lease_id":"lease-007","mode":"exclusive-modifying"}}
+{"seq":62,"timestamp":"2026-11-24T10:52:30+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-qe-003","feature_id":"FEATURE-001","persona":"qe","agent_instance":"qe-003","state":"VERIFYING","event_type":"gate.attempt","action":"matlab-unittest","tool":"matlab.run-tests","package":null,"result":"PASSED","reason_codes":[],"evidence":[],"approval_id":null,"details":{"level":"L1","attempt":3,"tests":{"run":46,"passed":46,"failed":0}}}
+{"seq":63,"timestamp":"2026-11-24T10:59:05+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-qe-003","feature_id":"FEATURE-001","persona":"qe","agent_instance":"qe-003","state":"VERIFYING","event_type":"gate.attempt","action":"codegen-compile-reference","tool":"codegen.build","package":null,"result":"PASSED","reason_codes":[],"evidence":["gates/codegen-compile-reference/attempt-003.yaml"],"approval_id":null,"details":{"level":"L3","attempt":3,"summary":"Code generated and compiled for the reference target"}}
+{"seq":64,"timestamp":"2026-11-24T10:59:30+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-qe-003","feature_id":"FEATURE-001","persona":"qe","agent_instance":"qe-003","state":"VERIFYING","event_type":"handoff.submitted","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"handoff_id":"handoff-qe-result-002","to_persona":"evaluator","summary":"All mandatory gates passed"}}
+{"seq":65,"timestamp":"2026-11-24T10:59:31+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":"session-qe-003","feature_id":"FEATURE-001","persona":"qe","agent_instance":"qe-003","state":"VERIFYING","event_type":"lease.released","action":null,"tool":null,"package":null,"result":"ok","reason_codes":[],"evidence":[],"approval_id":null,"details":{"host":"codex","lease_id":"lease-007","mode":"exclusive-modifying"}}
+{"seq":66,"timestamp":"2026-11-24T10:59:31+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"EVALUATING","event_type":"state.transition","action":"VERIFYING -> EVALUATING","tool":null,"package":null,"result":"ok","reason_codes":["QE_RESULT_SUBMITTED"],"evidence":[],"approval_id":null,"details":{"from":"VERIFYING","to":"EVALUATING"}}
+{"seq":67,"timestamp":"2026-11-24T10:59:40+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"evaluator","agent_instance":null,"state":"EVALUATING","event_type":"verdict.issued","action":null,"tool":null,"package":null,"result":"PASSED","reason_codes":["VERDICT_NOT_AUTHORITATIVE"],"evidence":["verdict.yaml"],"approval_id":null,"details":{"authority":"advisory","highest_level_passed":"L3","required_level":"L3","summary":"All rules satisfied locally. CI must re-run gates for an authoritative verdict."}}
+{"seq":68,"timestamp":"2026-11-24T10:59:41+05:30","workflow_id":"workflow-FEATURE-001-001","session_id":null,"feature_id":"FEATURE-001","persona":"kernel","agent_instance":null,"state":"PASSED","event_type":"state.transition","action":"EVALUATING -> PASSED","tool":null,"package":null,"result":"ok","reason_codes":["COMPLETION_RULES_SATISFIED"],"evidence":[],"approval_id":null,"details":{"from":"EVALUATING","to":"PASSED"}}
+</script>
+<script>
+(function () {
+  "use strict";
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  const MAIN = ["CREATED", "INITIALISING", "PLANNING", "PLAN_REVIEW", "TEST_DESIGN", "DEVELOPING", "DEVELOPMENT_REVIEW", "VERIFYING", "EVALUATING"];
+  const TERMINALS = ["PASSED", "FAILED", "BLOCKED", "INCONCLUSIVE"];
+  const OWNER_FULL = { CREATED: "kernel", INITIALISING: "kernel", PLANNING: "planner", PLAN_REVIEW: "kernel", TEST_DESIGN: "qe", DEVELOPING: "development", DEVELOPMENT_REVIEW: "kernel", VERIFYING: "qe", EVALUATING: "evaluator", REWORK_PLANNING: "planner", PASSED: "kernel", FAILED: "kernel", BLOCKED: "kernel", INCONCLUSIVE: "kernel" };
+  const OWNER_LITE = Object.assign({}, OWNER_FULL, { PLANNING: "kernel", VERIFYING: "kernel", REWORK_PLANNING: "kernel" });
+  const PERSONAS = [
+    { id: "kernel", label: "Kernel", sub: "state, reviews" },
+    { id: "planner", label: "Planner", sub: "" },
+    { id: "qe", label: "QE", sub: "" },
+    { id: "development", label: "Development", sub: "" },
+    { id: "evaluator", label: "Evaluator", sub: "read-only" },
+  ];
+  const PCOLOR = { kernel: "var(--ch-kernel)", planner: "var(--ch-planner)", qe: "var(--ch-qe)", development: "var(--ch-dev)", evaluator: "var(--ch-eval)" };
+  const HOSTS = { "claude-code": "Claude Code", codex: "Codex" };
+  const LEVELS = ["L0", "L1", "L2", "L3", "L4", "L5", "L6"];
+  const CONTROLS = { write_outside_scope: "Writes outside scope", protected_paths: "Protected paths", kernel_state: "Kernel state files", shell_commands: "Shell commands", network: "Network access" };
+  const FILTERS = [
+    { id: "all", label: "All", test: () => true },
+    { id: "state", label: "State", test: (e) => /^(state\.|workflow\.|blocker\.)/.test(e.event_type || "") },
+    { id: "lease", label: "Leases", test: (e) => /^lease\./.test(e.event_type || "") },
+    { id: "tool", label: "Tools", test: (e) => /^tool\./.test(e.event_type || "") },
+    { id: "gate", label: "Gates", test: (e) => /^(gate\.|verdict\.|evaluation\.)/.test(e.event_type || "") },
+    { id: "handoff", label: "Handoffs", test: (e) => /^handoff\./.test(e.event_type || "") },
+    { id: "deny", label: "Blocked", test: (e) => e.result === "DENY" || e.event_type === "handoff.rejected" },
+  ];
+
+  const app = {
+    mode: "demo", events: [], idx: 0, playing: false, timer: null, speed: 1,
+    filter: "all", selected: null, stateFile: null, warnings: 0, lastSeenSeq: 0, fileName: "",
+  };
+
+  /* ---------- Formatting ---------- */
+  const tfmt = (t, secs = true) => isFinite(t) ? new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: secs ? "2-digit" : undefined, hour12: false }) : "–";
+  const persona = (p) => PERSONAS.find((x) => x.id === p) || { id: p || "kernel", label: p ? p[0].toUpperCase() + p.slice(1) : "Kernel" };
+  const host = (h) => HOSTS[h] || h || "";
+  const semClass = (r) => r === "PASSED" || r === "ok" || r === "ALLOW" || r === "ACCEPTED" ? "ok"
+    : r === "FAILED" || r === "DENY" || r === "REJECTED" ? "bad"
+    : r === "BLOCKED" || r === "INCONCLUSIVE" ? "warn" : "";
+  const prettyState = (s) => (s || "").replace(/_/g, " ");
+
+  /* ---------- Ingest ---------- */
+  function normalise(list) {
+    list.forEach((e, i) => {
+      if (e.seq == null) e.seq = i + 1;
+      e._t = Date.parse(e.timestamp);
+    });
+    return list;
+  }
+  function parseJsonl(text) {
+    const out = []; let bad = 0;
+    text.split(/\r?\n/).forEach((line) => {
+      const s = line.trim(); if (!s) return;
+      try { const o = JSON.parse(s); if (o && typeof o === "object") out.push(o); else bad++; } catch (e) { bad++; }
+    });
+    return { events: normalise(out), bad };
+  }
+
+  /* ---------- Fold events into a view model ---------- */
+  function fold(evs) {
+    const m = {
+      title: null, feature: null, workflow: null, profile: null, requiredLevel: null, maxRework: null,
+      state: null, stateSince: null, visits: {}, edges: {}, stateIntervals: [], lease: null, leaseIntervals: [],
+      rework: 0, gates: new Map(), enf: new Map(), hosts: [], verdict: null, authority: null, denies: 0,
+      blocker: null, t0: null, tLast: null, lastEval: null,
+    };
+    const enter = (s, t) => {
+      if (!s) return;
+      const last = m.stateIntervals[m.stateIntervals.length - 1];
+      if (last && last.end == null) last.end = t;
+      m.stateIntervals.push({ state: s, start: t, end: null });
+      m.state = s; m.stateSince = t; m.visits[s] = (m.visits[s] || 0) + 1;
+    };
+    const closeLease = (t) => { if (m.lease) { m.lease.end = t; m.lease = null; } };
+    for (const e of evs) {
+      const t = e._t;
+      if (isFinite(t)) { if (m.t0 == null) m.t0 = t; m.tLast = t; }
+      if (e.workflow_id) m.workflow = e.workflow_id;
+      if (e.feature_id) m.feature = e.feature_id;
+      const d = e.details || {};
+      switch (e.event_type) {
+        case "workflow.created":
+          m.title = d.title || m.title; m.profile = d.profile || m.profile;
+          m.requiredLevel = d.required_level || m.requiredLevel;
+          if (d.maximum_rework_cycles != null) m.maxRework = d.maximum_rework_cycles;
+          enter(e.state || "CREATED", t); break;
+        case "state.transition": {
+          const from = d.from, to = d.to || e.state;
+          if (from && to) m.edges[from + ">" + to] = (m.edges[from + ">" + to] || 0) + 1;
+          if (to === "REWORK_PLANNING") m.rework = Math.max(m.rework + 1, d.cycle || 0);
+          if (to === "BLOCKED") m.blocker = { reasons: e.reason_codes || [], since: t };
+          else if (from === "BLOCKED") m.blocker = null;
+          enter(to, t); break;
+        }
+        case "lease.acquired":
+          closeLease(t);
+          m.lease = { persona: e.persona, agent: e.agent_instance, host: d.host, start: t, end: null };
+          m.leaseIntervals.push(m.lease); break;
+        case "lease.released": closeLease(t); break;
+        case "gate.attempt": {
+          const id = e.action || e.tool || "gate";
+          if (!m.gates.has(id)) m.gates.set(id, { id, level: d.level || null, attempts: [] });
+          const g = m.gates.get(id); if (d.level) g.level = d.level;
+          g.attempts.push({ result: e.result, persona: e.persona, t, attempt: d.attempt, purpose: d.purpose, seq: e.seq });
+          break;
+        }
+        case "enforcement.probe": {
+          const ctl = e.action || "control", h = d.host || "host";
+          if (!m.enf.has(ctl)) m.enf.set(ctl, {});
+          m.enf.get(ctl)[h] = e.result;
+          if (!m.hosts.includes(h)) m.hosts.push(h);
+          break;
+        }
+        case "tool.decision": if (e.result === "DENY") m.denies++; break;
+        case "evaluation.result": m.lastEval = e; break;
+        case "verdict.issued": m.verdict = e.result; m.authority = d.authority || null; m.lastEval = e; break;
+        case "blocker.raised": m.blocker = { reasons: e.reason_codes || [], since: t }; break;
+        case "blocker.resolved": m.blocker = null; break;
+      }
+    }
+    m.owner = m.profile === "lite" ? OWNER_LITE : OWNER_FULL;
+    return m;
+  }
+  function achievedLevel(m) {
+    const latest = [];
+    for (const g of m.gates.values()) {
+      const ind = g.attempts.filter((a) => a.persona !== "development");
+      if (!ind.length || !g.level) continue;
+      latest.push({ level: g.level, result: ind[ind.length - 1].result });
+    }
+    let best = null;
+    for (const L of LEVELS) {
+      const gs = latest.filter((x) => x.level === L);
+      if (!gs.length) continue;
+      if (gs.every((x) => x.result === "PASSED")) best = L; else break;
+    }
+    return best;
+  }
+
+  /* ---------- Current slice ---------- */
+  function visible() { return app.mode === "live" ? app.events : app.events.slice(0, app.idx); }
+  function cursorTime(m) {
+    if (app.mode === "live") {
+      const terminal = m.state === "PASSED" || m.state === "FAILED";
+      return terminal ? m.tLast : Math.max(Date.now(), m.tLast || 0);
+    }
+    return m.tLast;
+  }
+  function axisEnd(m, cur) {
+    if (app.mode === "live") return cur;
+    const all = app.events.length ? app.events[app.events.length - 1]._t : cur;
+    return isFinite(all) ? all : cur;
+  }
+
+  /* ---------- Render: header + summary ---------- */
+  function renderHeader(m) {
+    $("#title").textContent = m.title || (m.feature ? m.feature : "Waiting for a workflow");
+    const bits = [];
+    if (m.feature) bits.push(m.feature);
+    if (m.workflow) bits.push(m.workflow);
+    if (m.profile) bits.push(m.profile + " profile");
+    if (m.requiredLevel) bits.push("requires " + m.requiredLevel);
+    $("#meta").textContent = bits.length ? bits.join("  ·  ") : "No audit events yet";
+  }
+  function tile(k, v, s, opts = {}) {
+    return `<div class="tile"><div class="k">${esc(k)}</div><div class="v${opts.mono ? " mono" : ""}">${v}</div>${s ? `<div class="s${opts.alert ? " alert" : ""}">${s}</div>` : ""}</div>`;
+  }
+  function renderSummary(m) {
+    const out = [];
+    // State
+    let stateSub = m.stateSince ? "since " + esc(tfmt(m.stateSince)) : "";
+    let alert = false;
+    if (m.state) stateSub += (stateSub ? " · " : "") + "owner " + esc(persona(m.owner[m.state]).label);
+    const sf = app.stateFile && app.stateFile.workflow;
+    if (app.mode === "live" && sf) {
+      stateSub += ` · state file rev ${esc(sf.revision)}`;
+      if (sf.current_state && m.state && sf.current_state !== m.state) {
+        stateSub = `State file says ${esc(sf.current_state)}; audit log says ${esc(m.state)}`; alert = true;
+      }
+    }
+    const tcls = TERMINALS.includes(m.state) ? semClass(m.state) : "";
+    out.push(tile("State", m.state ? (tcls ? `<span class="pill big ${tcls}">${esc(m.state)}</span>` : esc(m.state)) : "–", stateSub, { mono: !tcls, alert }));
+    // Lease
+    if (m.lease) {
+      const p = persona(m.lease.persona);
+      out.push(tile("Modifying lease", `<span class="pdot" style="--c:${PCOLOR[p.id] || "var(--muted)"}"></span>${esc(p.label)}`,
+        `${esc(m.lease.agent || "")}${m.lease.host ? " on " + esc(host(m.lease.host)) : ""} · since ${esc(tfmt(m.lease.start))}`));
+    } else {
+      const who = m.state ? persona(m.owner[m.state]) : persona("kernel");
+      const ended = TERMINALS.includes(m.state);
+      out.push(tile("Modifying lease", `<span class="pdot" style="--c:${PCOLOR[who.id]}"></span>None`,
+        !m.state ? "No workflow yet" : ended ? "The run has ended; no agent holds the lease" : `${esc(who.label)} is working; no agent holds the lease`));
+    }
+    // Rework
+    out.push(tile("Rework cycles", `${m.rework}${m.maxRework != null ? ` <span class="s">of ${m.maxRework}</span>` : ""}`,
+      m.rework ? "Original contract unchanged" : "No rework so far"));
+    // Verification
+    const ach = achievedLevel(m), req = m.requiredLevel;
+    const ai = ach ? LEVELS.indexOf(ach) : -1, ri = req ? LEVELS.indexOf(req) : -1;
+    const ladder = `<div class="ladder" aria-hidden="true">${LEVELS.map((L, i) => `<span class="${i <= ai ? "on" : ""}${i === ri ? " req" : ""}">${L}</span>`).join("")}</div>`;
+    out.push(`<div class="tile"><div class="k">Verification level</div><div class="v">${ach ? esc(ach) : "None"}${req ? ` <span class="s">of ${esc(req)} required</span>` : ""}</div>${ladder}</div>`);
+    // Verdict
+    if (m.verdict) {
+      out.push(tile("Verdict", `<span class="pill big ${semClass(m.verdict)}">${esc(m.verdict)}</span>`,
+        m.authority === "authoritative" ? "Authoritative (CI)" : "Advisory. CI must re-run gates to confirm."));
+    } else if (m.lastEval) {
+      out.push(tile("Last evaluation", `<span class="pill big ${semClass(m.lastEval.result)}">${esc(m.lastEval.result)}</span>`,
+        esc((m.lastEval.details || {}).summary || "")));
+    } else {
+      out.push(tile("Verdict", "Pending", "Issued by the deterministic evaluator"));
+    }
+    // Blocked actions / blocker
+    if (m.blocker) {
+      out.push(tile("Blocker", `<span class="pill big warn">BLOCKED</span>`, esc((m.blocker.reasons || []).join(", ") || "Reason not recorded"), { alert: true }));
+    } else {
+      out.push(tile("Blocked actions", `${m.denies}`, m.denies ? "Denied by the tool broker or host hook" : "No denials", { alert: false }));
+    }
+    $("#summary").innerHTML = out.join("");
+  }
+
+  /* ---------- Render: state machine ---------- */
+  const NW = 104, NH = 46, STEP = 122, X0 = 8, YM = 84;
+  function pos(s) {
+    const i = MAIN.indexOf(s);
+    if (i >= 0) return { x: X0 + i * STEP, y: YM, w: NW, h: NH };
+    const ti = TERMINALS.indexOf(s);
+    if (ti >= 0) return { x: X0 + 8 * STEP + NW + 36, y: 12 + ti * 54, w: 112, h: 40 };
+    if (s === "REWORK_PLANNING") return { x: 801, y: 182, w: NW, h: NH };
+    return null;
+  }
+  const LABELS = { PLAN_REVIEW: ["PLAN", "REVIEW"], TEST_DESIGN: ["TEST", "DESIGN"], DEVELOPMENT_REVIEW: ["DEVELOPMENT", "REVIEW"], REWORK_PLANNING: ["REWORK", "PLANNING"] };
+  function renderSM(m) {
+    const parts = [];
+    parts.push(`<defs>
+      <marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0 L8 4 L0 8 Z"></path></marker>
+      <marker id="ah-on" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah on" d="M0 0 L8 4 L0 8 Z"></path></marker>
+    </defs>`);
+    const drawn = new Set();
+    const edge = (from, to, d, opts = {}) => {
+      const key = from + ">" + to; drawn.add(key);
+      const n = m.edges[key] || 0, on = n > 0;
+      parts.push(`<path class="edge${on ? " on" : ""}${opts.dash ? " dash" : ""}" d="${d}" marker-end="url(#${on ? "ah-on" : "ah"})"></path>`);
+      if (opts.label) parts.push(`<text class="elabel${on ? " on" : ""}" x="${opts.lx}" y="${opts.ly}" text-anchor="middle">${esc(opts.label)}</text>`);
+    };
+    // Main row
+    for (let i = 0; i < MAIN.length - 1; i++) {
+      const a = pos(MAIN[i]), b = pos(MAIN[i + 1]);
+      const y = a.y + NH / 2, x1 = a.x + NW, x2 = b.x - 2;
+      edge(MAIN[i], MAIN[i + 1], `M${x1} ${y} L${x2} ${y}`, { cx: (x1 + x2) / 2, cy: y - 6 });
+    }
+    // Lite / no-test-design skip
+    {
+      const a = pos("PLAN_REVIEW"), b = pos("DEVELOPING");
+      const ax = a.x + NW / 2, bx = b.x + NW / 2;
+      edge("PLAN_REVIEW", "DEVELOPING", `M${ax} ${a.y} C ${ax} ${a.y - 44}, ${bx} ${b.y - 44}, ${bx} ${b.y - 2}`, { dash: true, label: "lite or no test design", lx: (ax + bx) / 2, ly: a.y - 38 });
+    }
+    // Evaluating -> terminals
+    {
+      const a = pos("EVALUATING");
+      TERMINALS.forEach((s) => {
+        const b = pos(s);
+        edge("EVALUATING", s, `M${a.x + NW} ${a.y + NH / 2} C ${a.x + NW + 18} ${a.y + NH / 2}, ${b.x - 18} ${b.y + b.h / 2}, ${b.x - 2} ${b.y + b.h / 2}`, { cx: b.x - 14, cy: b.y + b.h / 2 - 5 });
+      });
+    }
+    // Rework loop
+    {
+      const ev = pos("EVALUATING"), rw = pos("REWORK_PLANNING"), dv = pos("DEVELOPING");
+      edge("EVALUATING", "REWORK_PLANNING", `M${ev.x + NW / 2} ${ev.y + NH} C ${ev.x + NW / 2} ${rw.y + NH / 2}, ${rw.x + NW + 30} ${rw.y + NH / 2}, ${rw.x + NW + 2} ${rw.y + NH / 2}`, { label: "rework", lx: ev.x + NW / 2 + 30, ly: ev.y + NH + 34 });
+      edge("REWORK_PLANNING", "DEVELOPING", `M${rw.x} ${rw.y + NH / 2} C ${rw.x - 40} ${rw.y + NH / 2}, ${dv.x + NW / 2} ${rw.y + NH / 2}, ${dv.x + NW / 2} ${dv.y + NH + 2}`, { cx: dv.x + NW / 2 + 16, cy: dv.y + NH + 24 });
+    }
+    // Any other transition actually taken (rejections, blocks, resumes)
+    Object.keys(m.edges).forEach((key) => {
+      if (drawn.has(key)) return;
+      const [from, to] = key.split(">"); const a = pos(from), b = pos(to);
+      if (!a || !b) return;
+      let d;
+      if (MAIN.includes(from) && MAIN.includes(to)) {
+        const ax = a.x + NW / 2, bx = b.x + NW / 2, y = a.y + NH;
+        d = `M${ax} ${y} C ${ax} ${y + 46}, ${bx} ${y + 46}, ${bx} ${y + 2}`;
+        edge(from, to, d, { dash: true, cx: (ax + bx) / 2, cy: y + 44 });
+      } else {
+        d = `M${a.x + a.w / 2} ${a.y + a.h / 2} L${b.x + b.w / 2} ${b.y + b.h / 2}`;
+        edge(from, to, d, { dash: true, cx: (a.x + b.x) / 2 + 40, cy: (a.y + b.y) / 2 });
+      }
+    });
+    // Nodes
+    const all = MAIN.concat(["REWORK_PLANNING"], TERMINALS);
+    all.forEach((s) => {
+      const p = pos(s), own = m.owner[s] || "kernel", visits = m.visits[s] || 0;
+      const cur = s === m.state, term = TERMINALS.includes(s);
+      let cls = "node" + (visits ? " visited" : "") + (cur ? " current" : "");
+      if (cur && term) cls += " t-" + (semClass(s) || "warn");
+      const lines = LABELS[s] || [s];
+      const ty = p.y + p.h / 2 + (lines.length === 2 ? -2 : 4) + 2;
+      parts.push(`<g class="${cls}" style="--c:${PCOLOR[own]}"><title>${esc(s)} · owner ${esc(persona(own).label)}${visits ? " · entered " + visits + "×" : ""}</title>
+        ${cur && !term ? `<rect class="ring" x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="5"></rect>` : ""}
+        <rect class="box" x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="5"></rect>
+        ${term ? "" : `<rect class="bar" x="${p.x + 1}" y="${p.y + 1}" width="${p.w - 2}" height="4" rx="2"></rect>`}
+        ${lines.map((l, i) => `<text x="${p.x + p.w / 2}" y="${ty + (lines.length === 2 ? (i === 0 ? -5 : 8) : 0)}" text-anchor="middle">${esc(l)}</text>`).join("")}
+        ${visits > 1 ? `<text class="count" x="${p.x + p.w - 2}" y="${p.y - 5}" text-anchor="end">×${visits}</text>` : ""}
+      </g>`);
+    });
+    $("#sm").innerHTML = parts.join("");
+  }
+
+  /* ---------- Render: channels ---------- */
+  function niceStep(span, px) {
+    const steps = [5e3, 1e4, 15e3, 3e4, 6e4, 12e4, 3e5, 6e5, 9e5, 18e5, 36e5, 72e5, 144e5];
+    const want = Math.max(2, Math.floor(px / 92));
+    for (const s of steps) if (span / s <= want) return s;
+    return steps[steps.length - 1];
+  }
+  function laneOf(e) { return PERSONAS.some((p) => p.id === e.persona) ? e.persona : "kernel"; }
+  function renderLanes(m, evs) {
+    const wrap = $("#lanes-wrap");
+    const W = Math.max(760, Math.floor(wrap.clientWidth));
+    const LBL = 132, PADR = 18, BAND_Y = 6, BAND_H = 20, TOP = 34, LH = 48;
+    const axisY = TOP + PERSONAS.length * LH + 4, H = axisY + 24;
+    const svg = $("#lanes");
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", W); svg.setAttribute("height", H);
+    if (!evs.length || m.t0 == null) {
+      svg.innerHTML = `<text x="${LBL}" y="${TOP + 40}" style="fill:var(--muted);font-size:13px">Waiting for the first audit event</text>`;
+      return;
+    }
+    const cur = cursorTime(m), end0 = axisEnd(m, cur);
+    const finished = TERMINALS.includes(m.state) && m.state !== "BLOCKED" && m.state !== "INCONCLUSIVE";
+    const t0 = m.t0, t1 = Math.max(end0, t0 + (finished ? 1000 : 60000));
+    const X = (t) => LBL + ((t - t0) / (t1 - t0)) * (W - LBL - PADR);
+    const parts = [];
+    // Grid + axis
+    const step = niceStep(t1 - t0, W - LBL - PADR);
+    const first = Math.ceil(t0 / step) * step;
+    const secs = step < 6e4;
+    parts.push(`<g class="axis">`);
+    for (let t = first; t <= t1; t += step) {
+      const x = X(t);
+      parts.push(`<line class="gridline" x1="${x}" y1="${TOP}" x2="${x}" y2="${axisY}"></line><text x="${x}" y="${axisY + 16}" text-anchor="middle">${esc(tfmt(t, secs))}</text>`);
+    }
+    parts.push(`<line x1="${LBL}" y1="${axisY}" x2="${W - PADR}" y2="${axisY}"></line></g>`);
+    // State band
+    parts.push(`<text class="lane-sub" x="8" y="${BAND_Y + 14}">STATE</text>`);
+    m.stateIntervals.forEach((iv) => {
+      const a = X(iv.start), b = X(iv.end != null ? iv.end : cur), w = Math.max(1, b - a);
+      const own = m.owner[iv.state] || "kernel";
+      const label = prettyState(iv.state);
+      parts.push(`<g class="band" style="--c:${PCOLOR[own]}"><title>${esc(iv.state)} · ${esc(tfmt(iv.start))}${iv.end ? "–" + esc(tfmt(iv.end)) : " onward"}</title><rect x="${a}" y="${BAND_Y}" width="${w}" height="${BAND_H}"></rect>${w > label.length * 6.3 + 8 ? `<text x="${a + 4}" y="${BAND_Y + 14}">${esc(label)}</text>` : ""}</g>`);
+    });
+    // Lanes
+    PERSONAS.forEach((p, i) => {
+      const y = TOP + i * LH, hi = y + 10, lo = y + LH - 8;
+      parts.push(`<line class="lane-sep" x1="0" y1="${y}" x2="${W}" y2="${y}"></line>`);
+      parts.push(`<text class="lane-label" x="8" y="${y + 22}">${esc(p.label)}</text>`);
+      const hostsUsed = [...new Set(m.leaseIntervals.filter((l) => l.persona === p.id).map((l) => host(l.host)).filter(Boolean))];
+      const sub = hostsUsed.length ? hostsUsed.join(", ") : p.sub;
+      if (sub) parts.push(`<text class="lane-sub" x="8" y="${y + 37}">${esc(sub)}</text>`);
+      let ivs;
+      if (p.id === "kernel" || p.id === "evaluator") {
+        ivs = m.stateIntervals.filter((iv) => (m.owner[iv.state] || "kernel") === p.id && !(p.id === "kernel" && TERMINALS.includes(iv.state)))
+          .map((iv) => ({ start: iv.start, end: iv.end != null ? iv.end : cur, label: "" }));
+      } else {
+        ivs = m.leaseIntervals.filter((l) => l.persona === p.id)
+          .map((l) => ({ start: l.start, end: l.end != null ? l.end : cur, label: (l.agent || "") + (l.host ? " · " + host(l.host) : "") }));
+      }
+      let d = `M${X(t0)} ${lo}`;
+      ivs.forEach((iv) => {
+        const a = X(iv.start), b = Math.max(a + 1, X(iv.end));
+        d += ` L${a} ${lo} L${a} ${hi} L${b} ${hi} L${b} ${lo}`;
+        parts.push(`<rect class="sigfill" style="--c:${PCOLOR[p.id]}" x="${a}" y="${hi}" width="${b - a}" height="${lo - hi}"></rect>`);
+        if (iv.label && b - a > iv.label.length * 6.2 + 10) parts.push(`<text class="siglabel" x="${a + 5}" y="${hi + 13}">${esc(iv.label)}</text>`);
+      });
+      d += ` L${X(cur)} ${lo}`;
+      parts.push(`<path class="sig${p.id === "evaluator" ? " ro" : ""}" style="--c:${PCOLOR[p.id]}" d="${d}"></path>`);
+    });
+    parts.push(`<line class="lane-sep" x1="0" y1="${TOP + PERSONAS.length * LH}" x2="${W}" y2="${TOP + PERSONAS.length * LH}"></line>`);
+    // Markers
+    evs.forEach((e) => {
+      const t = e._t; if (!isFinite(t)) return;
+      const et = e.event_type || "";
+      if (et === "state.transition" || et.startsWith("lease.")) return;
+      const li = PERSONAS.findIndex((p) => p.id === laneOf(e));
+      const x = X(t), y = TOP + li * LH + 33;
+      let cls = "mk", shape = "";
+      if (et === "gate.attempt") {
+        cls += " gate-" + (semClass(e.result) || "other");
+        shape = `<path d="M${x} ${y - 7} L${x + 7} ${y} L${x} ${y + 7} L${x - 7} ${y} Z"></path>`;
+      } else if (et === "tool.decision") {
+        if (e.result === "DENY") { cls += " deny"; shape = `<line x1="${x - 5}" y1="${y - 5}" x2="${x + 5}" y2="${y + 5}"></line><line x1="${x + 5}" y1="${y - 5}" x2="${x - 5}" y2="${y + 5}"></line>`; }
+        else { cls += " allow"; shape = `<line x1="${x}" y1="${y - 4}" x2="${x}" y2="${y + 4}"></line>`; }
+      } else if (et === "tool.executed") {
+        cls += " exec"; shape = `<rect x="${x - 3.5}" y="${y - 3.5}" width="7" height="7"></rect>`;
+      } else if (et === "handoff.submitted") {
+        cls += " hand"; shape = `<path style="--c:${PCOLOR[laneOf(e)]}" d="M${x - 4} ${y - 6} L${x + 6} ${y} L${x - 4} ${y + 6} Z"></path>`;
+      } else if (et === "handoff.accepted" || et === "handoff.rejected") {
+        cls += et === "handoff.accepted" ? " acc" : " rej"; shape = `<path d="M${x - 4} ${y - 6} L${x + 6} ${y} L${x - 4} ${y + 6} Z"></path>`;
+      } else if (et === "verdict.issued" || et === "evaluation.result") {
+        cls += " verdict-" + (semClass(e.result) || "warn"); shape = `<circle class="v" cx="${x}" cy="${y}" r="5.5"></circle>`;
+      } else {
+        cls += " misc"; shape = `<circle class="v" cx="${x}" cy="${y}" r="2.5"></circle>`;
+      }
+      const sel = app.selected === e.seq ? `<circle class="sel-ring" cx="${x}" cy="${y}" r="10"></circle>` : "";
+      parts.push(`<g class="${cls}" data-seq="${esc(e.seq)}"><title>${esc(tfmt(t))} · ${esc(summaryText(e, true))}</title><rect class="hit" x="${x - 8}" y="${y - 9}" width="16" height="18"></rect>${shape}${sel}</g>`);
+    });
+    // Cursor
+    const cx = X(cur);
+    parts.push(`<line class="cursor" x1="${cx}" y1="${BAND_Y}" x2="${cx}" y2="${axisY}"></line>`);
+    const lblRight = cx > W - 80;
+    parts.push(`<text class="cursor-label" x="${lblRight ? cx - 4 : cx + 4}" y="${TOP - 2}" text-anchor="${lblRight ? "end" : "start"}">${app.mode === "live" ? "now" : esc(tfmt(cur))}</text>`);
+    svg.innerHTML = parts.join("");
+  }
+
+  /* ---------- Event text ---------- */
+  function summaryText(e, plain) {
+    const d = e.details || {};
+    const c = (s) => plain ? s : `<code>${esc(s)}</code>`;
+    const t = (s) => plain ? s : esc(s);
+    switch (e.event_type) {
+      case "workflow.created": return t("Workflow created: " + (d.title || e.feature_id || ""));
+      case "state.transition": return plain ? `${d.from || "?"} → ${d.to || e.state}` : `${c(d.from || "?")} → ${c(d.to || e.state)}`;
+      case "lease.acquired": return plain ? `${e.agent_instance} took the modifying lease on ${host(d.host)}` : `${c(e.agent_instance || "agent")} took the modifying lease${d.host ? " on " + esc(host(d.host)) : ""}`;
+      case "lease.released": return plain ? `${e.agent_instance} released the lease` : `${c(e.agent_instance || "agent")} released the lease`;
+      case "tool.decision": return plain ? `${e.tool} ${e.action || ""} ${e.result === "DENY" ? "blocked" : "allowed"}${d.via ? " by " + d.via : ""}` : `${c(e.tool || "tool")} ${c(e.action || "")} ${e.result === "DENY" ? "blocked" : "allowed"}${d.via ? " by " + esc(d.via) : ""}`;
+      case "tool.executed": return plain ? `${e.tool}: ${d.summary || e.action || ""}` : `${c(e.tool || "tool")} ${esc(d.summary || e.action || "")}`;
+      case "gate.attempt": {
+        const tests = d.tests ? ` · ${d.tests.passed}/${d.tests.run} tests` : "";
+        const sig = d.failure_signature ? ` · ${d.failure_signature}` : "";
+        const purpose = d.purpose ? ` (${d.purpose})` : "";
+        return plain ? `Gate ${e.action} ${d.level || ""} attempt ${d.attempt || "?"}${purpose}${tests}${sig}` : `Gate ${c(e.action || e.tool)} ${esc(d.level || "")} attempt ${esc(d.attempt || "?")}${esc(purpose)}${esc(tests)}${sig ? `<br><span style="color:var(--bad)">${esc(d.failure_signature)}</span>` : ""}`;
+      }
+      case "handoff.submitted": return t(`Handoff to ${persona(d.to_persona).label}: ${d.summary || d.handoff_id || ""}`);
+      case "handoff.accepted": return t(`Kernel accepted handoff: ${d.summary || d.handoff_id || ""}`);
+      case "handoff.rejected": return t(`Kernel rejected handoff: ${d.summary || d.handoff_id || ""}`);
+      case "enforcement.probe": return t(`${CONTROLS[e.action] || e.action} on ${host(d.host)}: ${e.result}`);
+      case "package.resolved": return t(`${e.action || "Packages resolved"}${d.packages ? ": " + d.packages.join(", ") : ""}`);
+      case "evaluation.result":
+      case "verdict.issued": return t(d.summary || `${e.event_type}: ${e.result}`);
+      default: return t(`${e.event_type || "event"}${e.action ? ": " + e.action : ""}`);
+    }
+  }
+
+  /* ---------- Render: log ---------- */
+  function renderFilters(evs) {
+    $("#filters").innerHTML = FILTERS.map((f) => {
+      const n = evs.filter(f.test).length;
+      return `<button type="button" class="chip" data-f="${f.id}" aria-pressed="${app.filter === f.id}">${esc(f.label)}<span class="n">${n}</span></button>`;
+    }).join("");
+  }
+  function renderLog(evs) {
+    const f = FILTERS.find((x) => x.id === app.filter) || FILTERS[0];
+    const list = evs.filter(f.test).slice(-500).reverse();
+    if (!list.length) { $("#log").innerHTML = `<li class="empty" style="display:block;cursor:default">No events match this filter yet.</li>`; return; }
+    const html = list.map((e) => {
+      const p = persona(laneOf(e)), sem = semClass(e.result);
+      const res = e.result && e.result !== "ok" ? `<span class="pill ${sem}">${esc(e.result)}</span>` : "";
+      const rc = (e.reason_codes || []).length ? `<div class="rc">${e.reason_codes.map((r) => `<span class="pill">${esc(r)}</span>`).join("")}</div>` : "";
+      const isNew = app.mode === "live" && e.seq > app.lastSeenSeq;
+      return `<li tabindex="0" data-seq="${esc(e.seq)}" class="${app.selected === e.seq ? "sel" : ""}${isNew ? " new" : ""}">
+        <span class="t">${esc(tfmt(e._t))}</span>
+        <span class="pd" style="--c:${PCOLOR[p.id]}"></span>
+        <div class="body"><div class="line1"><span class="who">${esc(p.label)}${e.agent_instance ? ` <span class="et">${esc(e.agent_instance)}</span>` : ""}</span><span class="et">${esc(e.event_type || "")}</span></div>
+        <div class="txt">${summaryText(e, false)}</div>${rc}</div>
+        <span class="res">${res}</span></li>`;
+    }).join("");
+    $("#log").innerHTML = html;
+  }
+
+  /* ---------- Render: gates + enforcement ---------- */
+  function renderGates(m) {
+    if (!m.gates.size) { $("#gates").innerHTML = `<tr><td colspan="4" class="empty">No gate attempts yet</td></tr>`; return; }
+    const rows = [...m.gates.values()].sort((a, b) => LEVELS.indexOf(a.level) - LEVELS.indexOf(b.level));
+    $("#gates").innerHTML = rows.map((g) => {
+      const last = g.attempts[g.attempts.length - 1];
+      const dots = g.attempts.map((a) => {
+        const col = semClass(a.result) === "ok" ? "var(--ok)" : semClass(a.result) === "bad" ? "var(--bad)" : semClass(a.result) === "warn" ? "var(--warn)" : "var(--muted)";
+        return `<i class="${a.persona === "development" ? "dev" : ""}" style="--c:${col}" title="Attempt ${esc(a.attempt || "")} · ${esc(persona(a.persona).label)} · ${esc(a.result)} · ${esc(tfmt(a.t))}"></i>`;
+      }).join("");
+      return `<tr><td class="mono">${esc(g.id)}</td><td class="mono">${esc(g.level || "–")}</td><td><div class="att">${dots}</div></td><td><span class="pill ${semClass(last.result)}">${esc(last.result)}</span></td></tr>`;
+    }).join("");
+  }
+  function renderEnf(m) {
+    if (!m.enf.size) { $("#enf-head").innerHTML = ""; $("#enf").innerHTML = `<tr><td class="empty">No enforcement probes yet</td></tr>`; return; }
+    $("#enf-head").innerHTML = `<tr><th>Control</th>${m.hosts.map((h) => `<th>${esc(host(h))}</th>`).join("")}</tr>`;
+    $("#enf").innerHTML = [...m.enf.entries()].map(([ctl, tiers]) =>
+      `<tr><td>${esc(CONTROLS[ctl] || ctl)}</td>${m.hosts.map((h) => `<td>${tiers[h] ? `<span class="tier ${esc(tiers[h])}">${esc(tiers[h])}</span>` : "–"}</td>`).join("")}</tr>`).join("");
+  }
+
+  /* ---------- Transport + mode ---------- */
+  function renderTransport() {
+    const live = app.mode === "live";
+    $("#transport").querySelectorAll(".btn:not(.file-btn), select, .scrub").forEach((el) => { el.hidden = live; });
+    const n = app.events.length;
+    const sc = $("#scrub"); sc.max = Math.max(1, n); sc.value = Math.max(1, app.idx);
+    const cur = app.events[app.idx - 1];
+    $("#pos").textContent = n ? `${app.idx} / ${n} · ${tfmt(cur && cur._t)}` : "no events";
+    $("#b-play").textContent = app.playing ? "❚❚ Pause" : (app.idx >= n ? "↻ Replay" : "▶ Play");
+    $("#b-back").disabled = app.idx <= 1; $("#b-fwd").disabled = app.idx >= n;
+  }
+  function setMode(mode, text) {
+    app.mode = mode;
+    const el = $("#mode"); el.className = "mode" + (mode === "live" ? " live" : "");
+    $("#mode-text").textContent = text;
+    const note = $("#foot-note");
+    if (mode === "live") note.textContent = "Following the run live from the local monitor server. New audit events appear as the kernel writes them.";
+    else if (mode === "file") note.textContent = `Replaying ${app.fileName}. Use the controls to step through the run.`;
+    else note.textContent = "Showing a built-in sample run. Open an audit.jsonl from a real run, or start the local monitor server to follow a run live.";
+  }
+
+  let raf = 0;
+  function render() {
+    raf = 0;
+    const evs = visible();
+    const m = fold(evs);
+    renderHeader(m); renderSummary(m); renderSM(m); renderLanes(m, evs);
+    renderFilters(evs); renderLog(evs); renderGates(m); renderEnf(m); renderTransport();
+    if (app.mode === "live" && evs.length) app.lastSeenSeq = evs[evs.length - 1].seq;
+  }
+  const schedule = () => { if (!raf) raf = requestAnimationFrame(render); };
+
+  function stop() { app.playing = false; clearTimeout(app.timer); }
+  function tick() {
+    if (!app.playing) return;
+    if (app.idx >= app.events.length) { stop(); render(); return; }
+    app.idx++; render();
+    app.timer = setTimeout(tick, 900 / app.speed);
+  }
+  function play() {
+    if (app.idx >= app.events.length) app.idx = 1;
+    app.playing = true; render(); app.timer = setTimeout(tick, 900 / app.speed);
+  }
+
+  /* ---------- Live mode ---------- */
+  async function tryLive() {
+    let snap;
+    try {
+      const r = await fetch("api/snapshot", { cache: "no-store" });
+      if (!r.ok) return false;
+      snap = await r.json();
+    } catch (e) { return false; }
+    if (!snap || snap.kind !== "harness-monitor-snapshot") return false;
+    stop();
+    app.events = normalise(snap.events || []); app.idx = app.events.length; app.stateFile = snap.state || null;
+    app.lastSeenSeq = app.events.length ? app.events[app.events.length - 1].seq : 0;
+    setMode("live", "Live");
+    $("#conn").textContent = snap.audit_path ? "Reading " + snap.audit_path : "Waiting for an audit log";
+    const es = new EventSource("api/stream?offset=" + encodeURIComponent(snap.offset || 0));
+    es.addEventListener("audit", (msg) => {
+      try { const e = JSON.parse(msg.data); e._t = Date.parse(e.timestamp); if (e.seq == null) e.seq = app.events.length + 1; app.events.push(e); app.idx = app.events.length; schedule(); } catch (err) { app.warnings++; }
+    });
+    es.addEventListener("state", (msg) => { try { app.stateFile = JSON.parse(msg.data); schedule(); } catch (err) { /* ignore */ } });
+    es.addEventListener("reset", () => { app.events = []; app.idx = 0; schedule(); });
+    es.addEventListener("info", (msg) => { try { const i = JSON.parse(msg.data); if (i.audit_path) $("#conn").textContent = "Reading " + i.audit_path; } catch (err) { /* ignore */ } });
+    es.addEventListener("warning", () => { app.warnings++; $("#conn").textContent = `${app.warnings} malformed audit line(s) skipped`; });
+    es.onopen = () => { $("#mode").className = "mode live"; $("#mode-text").textContent = "Live"; };
+    es.onerror = () => { $("#mode").className = "mode down"; $("#mode-text").textContent = "Reconnecting"; };
+    setInterval(() => { if (app.mode === "live") schedule(); }, 5000);
+    render();
+    return true;
+  }
+
+  /* ---------- Wiring ---------- */
+  $("#b-play").addEventListener("click", () => { app.playing ? (stop(), render()) : play(); });
+  $("#b-back").addEventListener("click", () => { stop(); app.idx = Math.max(1, app.idx - 1); render(); });
+  $("#b-fwd").addEventListener("click", () => { stop(); app.idx = Math.min(app.events.length, app.idx + 1); render(); });
+  $("#b-restart").addEventListener("click", () => { stop(); app.idx = 1; render(); });
+  $("#speed").addEventListener("change", (e) => { app.speed = parseFloat(e.target.value) || 1; });
+  $("#scrub").addEventListener("input", (e) => { stop(); app.idx = parseInt(e.target.value, 10) || 1; render(); });
+  $("#filters").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-f]"); if (!b) return;
+    app.filter = b.dataset.f; render();
+  });
+  function select(seq, scroll) {
+    app.selected = app.selected === seq ? null : seq; render();
+    if (scroll && app.selected != null) {
+      let row = document.querySelector(`#log li[data-seq="${CSS.escape(String(seq))}"]`);
+      if (!row && app.filter !== "all") { app.filter = "all"; render(); row = document.querySelector(`#log li[data-seq="${CSS.escape(String(seq))}"]`); }
+      if (row) row.scrollIntoView({ block: "nearest" });
+    }
+  }
+  $("#log").addEventListener("click", (e) => { const li = e.target.closest("li[data-seq]"); if (li) select(Number(li.dataset.seq), false); });
+  $("#log").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const li = e.target.closest("li[data-seq]"); if (li) { e.preventDefault(); select(Number(li.dataset.seq), false); }
+  });
+  $("#lanes").addEventListener("click", (e) => { const g = e.target.closest("[data-seq]"); if (g) select(Number(g.dataset.seq), true); });
+  $("#file").addEventListener("change", (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      const { events, bad } = parseJsonl(String(r.result));
+      stop(); app.events = events; app.idx = events.length; app.selected = null; app.fileName = f.name;
+      setMode("file", "File replay");
+      $("#conn").textContent = `${f.name} · ${events.length} events${bad ? ` · ${bad} malformed line(s) skipped` : ""}`;
+      render();
+    };
+    r.onerror = () => { $("#conn").textContent = "Could not read that file. Choose an audit .jsonl file."; };
+    r.readAsText(f);
+    e.target.value = "";
+  });
+  if ("ResizeObserver" in window) new ResizeObserver(() => schedule()).observe($("#lanes-wrap"));
+  else window.addEventListener("resize", schedule);
+
+  /* ---------- Boot ---------- */
+  (async function boot() {
+    if (await tryLive()) return;
+    const raw = $("#sample-run").textContent;
+    const { events } = parseJsonl(raw);
+    app.events = events;
+    // Open mid-run (Development holding the lease in the rework cycle) so the first view shows a run in progress.
+    const k = events.findIndex((e) => e.event_type === "lease.acquired" && e.agent_instance === "dev-002");
+    app.idx = k >= 0 ? k + 3 : events.length;
+    setMode("demo", "Demo replay");
+    $("#conn").textContent = "Sample run: FEATURE-001";
+    render();
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!reduce && app.idx < app.events.length) { app.playing = true; renderTransport(); app.timer = setTimeout(tick, 1200); }
+  })();
+})();
+</script>
+
+</body>
+</html>
