@@ -1,0 +1,1474 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://embedded-targets.ai/schemas/audit-record.schema.json",
+  "title": "Audit record",
+  "description": "One line of .agent-harness/audit/audit.jsonl (spec v1.1.1 \u00a79.19). Generated from et_harness.audit.vocabulary; do not edit by hand.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sequence",
+    "timestamp",
+    "workflow_id",
+    "session_id",
+    "feature_id",
+    "persona",
+    "agent_instance",
+    "state",
+    "event_type",
+    "action",
+    "tool",
+    "package",
+    "result",
+    "reason_codes",
+    "evidence",
+    "approval_id",
+    "details",
+    "previous_entry_hash",
+    "entry_hash"
+  ],
+  "properties": {
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "workflow_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "session_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "feature_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "persona": {
+      "enum": [
+        "kernel",
+        "intake",
+        "planner",
+        "development",
+        "qe",
+        "evaluator",
+        null
+      ]
+    },
+    "agent_instance": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "state": {
+      "enum": [
+        "CREATED",
+        "INITIALISING",
+        "PLANNING",
+        "PLAN_REVIEW",
+        "TEST_DESIGN",
+        "DEVELOPING",
+        "DEVELOPMENT_REVIEW",
+        "VERIFYING",
+        "EVALUATING",
+        "REWORK_PLANNING",
+        "PASSED",
+        "FAILED",
+        "BLOCKED",
+        "INCONCLUSIVE",
+        null
+      ]
+    },
+    "event_type": {
+      "enum": [
+        "workflow.created",
+        "state.write",
+        "state.write_rolled_back",
+        "state.transition",
+        "lease.acquired",
+        "lease.released",
+        "lease.revoked",
+        "tool.decision",
+        "tool.executed",
+        "gate.attempt",
+        "handoff.submitted",
+        "handoff.accepted",
+        "handoff.rejected",
+        "checkpoint.recorded",
+        "scope.violation",
+        "enforcement.probe",
+        "package.resolved",
+        "approval.recorded",
+        "blocker.raised",
+        "blocker.resolved",
+        "evaluation.result",
+        "verdict.issued"
+      ]
+    },
+    "action": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tool": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "package": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "result": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "CONFIG_INVALID",
+          "SCHEMA_VERSION_UNSUPPORTED",
+          "FEATURE_CONTRACT_INVALID",
+          "MULTIPLE_ACTIVE_FEATURES",
+          "NO_ACTIVE_FEATURE",
+          "BASELINE_DIRTY",
+          "BASELINE_FAILED",
+          "CONTRACT_HASH_MISMATCH",
+          "CONTRACT_MUTATED_AFTER_LOCK",
+          "PATH_OUTSIDE_SCOPE",
+          "PROTECTED_PATH_CHANGED",
+          "PACKAGE_NOT_FOUND",
+          "PACKAGE_VERSION_CONFLICT",
+          "PACKAGE_DEPENDENCY_CYCLE",
+          "PACKAGE_DIGEST_MISMATCH",
+          "TOOL_NOT_REGISTERED",
+          "TOOL_PERMISSION_DENIED",
+          "APPROVAL_REQUIRED",
+          "APPROVAL_INVALID",
+          "LEASE_ALREADY_HELD",
+          "LEASE_STALE",
+          "WORKFLOW_REVISION_CONFLICT",
+          "TRANSITION_NOT_ALLOWED",
+          "HANDOFF_INVALID",
+          "HANDOFF_DIFF_MISMATCH",
+          "PLAN_COVERAGE_INCOMPLETE",
+          "GATE_PRECONDITION_FAILED",
+          "GATE_TIMEOUT",
+          "GATE_EVIDENCE_MISSING",
+          "RETRY_LIMIT_EXCEEDED",
+          "REWORK_LIMIT_EXCEEDED",
+          "EVIDENCE_MANIFEST_INCOMPLETE",
+          "ENVIRONMENT_DRIFT",
+          "MANDATORY_DEPENDENCY_UNAVAILABLE",
+          "EXECUTION_NOT_STARTED",
+          "NOT_IMPLEMENTED",
+          "OWNER_APPROVAL_MISSING",
+          "ACCEPTANCE_CRITERION_UNVERIFIABLE",
+          "PROFILE_ESCALATION_REQUIRED",
+          "ENFORCEMENT_TIER_INSUFFICIENT",
+          "HOOK_DECISION_TIMEOUT",
+          "STATE_TAMPER_DETECTED",
+          "PROJECTION_DRIFT",
+          "QE_TEST_MODIFIED",
+          "BASELINE_TESTS_NOT_FAILING",
+          "TEST_WEAKENING_SUSPECTED",
+          "DERIVED_ARTEFACT_COMMITTED",
+          "MODEL_DIFF_UNAVAILABLE",
+          "HUMAN_REVIEW_REQUIRED",
+          "APPROVAL_UNVERIFIABLE",
+          "VERDICT_NOT_AUTHORITATIVE",
+          "MATLAB_UNAVAILABLE",
+          "MATLAB_PRODUCT_MISSING",
+          "LICENCE_UNAVAILABLE",
+          "TOOLCHAIN_UNAVAILABLE",
+          "CONFIG_WEAKENING_REJECTED",
+          "REPOSITORY_NOT_FOUND",
+          "REPOSITORY_COMMAND_FAILED",
+          "STATE_NOT_FOUND",
+          "STATE_WRITE_INTERRUPTED",
+          "INTERNAL_ERROR"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "approval_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "details": {
+      "type": "object"
+    },
+    "previous_entry_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "entry_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "workflow.created"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [],
+        "properties": {
+          "details": {
+            "type": "object",
+            "required": [
+              "maximum_rework_cycles",
+              "profile",
+              "required_level",
+              "title"
+            ],
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "profile": {
+                "enum": [
+                  "full",
+                  "lite"
+                ]
+              },
+              "required_level": {
+                "enum": [
+                  "L0",
+                  "L1",
+                  "L2",
+                  "L3",
+                  "L4",
+                  "L5",
+                  "L6"
+                ]
+              },
+              "maximum_rework_cycles": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "state.write"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [],
+        "properties": {
+          "details": {
+            "type": "object",
+            "required": [
+              "previous_state_hash",
+              "revision",
+              "state_hash",
+              "state_key"
+            ],
+            "properties": {
+              "state_key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "state_hash": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "previous_state_hash": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "state.write_rolled_back"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "reason_codes"
+        ],
+        "properties": {
+          "reason_codes": {
+            "const": [
+              "STATE_WRITE_INTERRUPTED"
+            ]
+          },
+          "details": {
+            "type": "object",
+            "required": [
+              "abandoned_sequence",
+              "abandoned_state_hash",
+              "state_hash",
+              "state_key"
+            ],
+            "properties": {
+              "state_key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "state_hash": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "abandoned_state_hash": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "abandoned_sequence": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "state.transition"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "state"
+        ],
+        "properties": {
+          "state": {
+            "enum": [
+              "CREATED",
+              "INITIALISING",
+              "PLANNING",
+              "PLAN_REVIEW",
+              "TEST_DESIGN",
+              "DEVELOPING",
+              "DEVELOPMENT_REVIEW",
+              "VERIFYING",
+              "EVALUATING",
+              "REWORK_PLANNING",
+              "PASSED",
+              "FAILED",
+              "BLOCKED",
+              "INCONCLUSIVE"
+            ]
+          },
+          "details": {
+            "type": "object",
+            "required": [
+              "from",
+              "reason",
+              "to"
+            ],
+            "properties": {
+              "from": {
+                "enum": [
+                  "CREATED",
+                  "INITIALISING",
+                  "PLANNING",
+                  "PLAN_REVIEW",
+                  "TEST_DESIGN",
+                  "DEVELOPING",
+                  "DEVELOPMENT_REVIEW",
+                  "VERIFYING",
+                  "EVALUATING",
+                  "REWORK_PLANNING",
+                  "PASSED",
+                  "FAILED",
+                  "BLOCKED",
+                  "INCONCLUSIVE"
+                ]
+              },
+              "to": {
+                "enum": [
+                  "CREATED",
+                  "INITIALISING",
+                  "PLANNING",
+                  "PLAN_REVIEW",
+                  "TEST_DESIGN",
+                  "DEVELOPING",
+                  "DEVELOPMENT_REVIEW",
+                  "VERIFYING",
+                  "EVALUATING",
+                  "REWORK_PLANNING",
+                  "PASSED",
+                  "FAILED",
+                  "BLOCKED",
+                  "INCONCLUSIVE"
+                ]
+              },
+              "reason": {
+                "enum": [
+                  "START_REQUESTED",
+                  "INITIALISATION_PASSED",
+                  "BASELINE_FAILURE_ESTABLISHED",
+                  "PLAN_SUBMITTED",
+                  "PLAN_ACCEPTED",
+                  "PLAN_REJECTED",
+                  "TESTS_ACCEPTED",
+                  "HANDOFF_SUBMITTED",
+                  "HANDOFF_ACCEPTED",
+                  "HANDOFF_REJECTED",
+                  "NON_RECOVERABLE_FAILURE",
+                  "QE_RESULT_SUBMITTED",
+                  "GATE_RUN_RECORDED",
+                  "COMPLETION_RULES_SATISFIED",
+                  "REWORK_ALLOWED",
+                  "FAILURE_ESTABLISHED",
+                  "EVIDENCE_INSUFFICIENT",
+                  "REWORK_ACCEPTED",
+                  "BLOCKER_RAISED",
+                  "BLOCKER_RESOLVED",
+                  "ADDITIONAL_EVIDENCE_AUTHORISED",
+                  "FEATURE_ABANDONED"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "lease.acquired"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "agent_instance",
+          "persona"
+        ],
+        "properties": {
+          "persona": {
+            "enum": [
+              "kernel",
+              "intake",
+              "planner",
+              "development",
+              "qe",
+              "evaluator"
+            ]
+          },
+          "agent_instance": {
+            "type": "string",
+            "minLength": 1
+          },
+          "details": {
+            "type": "object",
+            "required": [
+              "host",
+              "lease_id",
+              "mode"
+            ],
+            "properties": {
+              "host": {
+                "enum": [
+                  "claude-code",
+                  "codex"
+                ]
+              },
+              "lease_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "mode": {
+                "enum": [
+                  "exclusive-modifying",
+                  "read-only"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "lease.released"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "agent_instance",
+          "persona"
+        ],
+        "properties": {
+          "persona": {
+            "enum": [
+              "kernel",
+              "intake",
+              "planner",
+              "development",
+              "qe",
+              "evaluator"
+            ]
+          },
+          "agent_instance": {
+            "type": "string",
+            "minLength": 1
+          },
+          "details": {
+            "type": "object",
+            "required": [
+              "host",
+              "lease_id",
+              "mode"
+            ],
+            "properties": {
+              "host": {
+                "enum": [
+                  "claude-code",
+                  "codex"
+                ]
+              },
+              "lease_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "mode": {
+                "enum": [
+                  "exclusive-modifying",
+                  "read-only"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "lease.revoked"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "agent_instance",
+          "persona"
+        ],
+        "properties": {
+          "persona": {
+            "enum": [
+              "kernel",
+              "intake",
+              "planner",
+              "development",
+              "qe",
+              "evaluator"
+            ]
+          },
+          "agent_instance": {
+            "type": "string",
+            "minLength": 1
+          },
+          "details": {
+            "type": "object",
+            "required": [
+              "host",
+              "lease_id",
+              "mode"
+            ],
+            "properties": {
+              "host": {
+                "enum": [
+                  "claude-code",
+                  "codex"
+                ]
+              },
+              "lease_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "mode": {
+                "enum": [
+                  "exclusive-modifying",
+                  "read-only"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "tool.decision"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "action",
+          "result",
+          "tool"
+        ],
+        "properties": {
+          "tool": {
+            "type": "string",
+            "minLength": 1
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1
+          },
+          "result": {
+            "enum": [
+              "ALLOW",
+              "DENY",
+              "REQUIRE_APPROVAL"
+            ]
+          },
+          "details": {
+            "type": "object",
+            "required": [
+              "via"
+            ],
+            "properties": {
+              "via": {
+                "enum": [
+                  "broker",
+                  "pre-tool hook"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "tool.executed"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "result",
+          "tool"
+        ],
+        "properties": {
+          "tool": {
+            "type": "string",
+            "minLength": 1
+          },
+          "result": {
+            "type": "string",
+            "minLength": 1
+          },
+          "details": {
+            "type": "object",
+            "required": [
+              "duration_ms",
+              "exit_code"
+            ],
+            "properties": {
+              "exit_code": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "duration_ms": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "summary": {
+                "type": "string"
+              },
+              "tests": {
+                "type": "object",
+                "required": [
+                  "run",
+                  "passed",
+                  "failed"
+                ],
+                "properties": {
+                  "run": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "passed": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "failed": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "skipped": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              },
+              "expected": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "gate.attempt"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "action",
+          "result"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "minLength": 1
+          },
+          "result": {
+            "enum": [
+              "PASSED",
+              "FAILED",
+              "BLOCKED",
+              "INCONCLUSIVE"
+            ]
+          },
+          "details": {
+            "type": "object",
+            "required": [
+              "attempt",
+              "execution_profile",
+              "level"
+            ],
+            "properties": {
+              "level": {
+                "enum": [
+                  "L0",
+                  "L1",
+                  "L2",
+                  "L3",
+                  "L4",
+                  "L5",
+                  "L6"
+                ]
+              },
+              "attempt": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "execution_profile": {
+                "enum": [
+                  "developer",
+                  "qe",
+                  "ci",
+                  "hardware-lab"
+                ]
+              },
+              "purpose": {
+                "type": "string",
+                "minLength": 1
+              },
+              "tests": {
+                "type": "object",
+                "required": [
+                  "run",
+                  "passed",
+                  "failed"
+                ],
+                "properties": {
+                  "run": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "passed": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "failed": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "skipped": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              },
+              "failure_signature": {
+                "type": "string",
+                "minLength": 1
+              },
+              "summary": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "handoff.submitted"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [],
+        "properties": {
+          "details": {
+            "type": "object",
+            "required": [
+              "handoff_id",
+              "summary",
+              "to_persona"
+            ],
+            "properties": {
+              "handoff_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "to_persona": {
+                "enum": [
+                  "kernel",
+                  "intake",
+                  "planner",
+                  "development",
+                  "qe",
+                  "evaluator"
+                ]
+              },
+              "summary": {
+                "type": "string"
+              },
+              "cycle": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "handoff.accepted"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [],
+        "properties": {
+          "details": {
+            "type": "object",
+            "required": [
+              "handoff_id",
+              "summary"
+            ],
+            "properties": {
+              "handoff_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "summary": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "handoff.rejected"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [],
+        "properties": {
+          "details": {
+            "type": "object",
+            "required": [
+              "handoff_id",
+              "summary"
+            ],
+            "properties": {
+              "handoff_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "summary": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "checkpoint.recorded"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [],
+        "properties": {
+          "details": {
+            "type": "object",
+            "required": [
+              "kind",
+              "tree_hash"
+            ],
+            "properties": {
+              "tree_hash": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "kind": {
+                "enum": [
+                  "freeze",
+                  "safe"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "scope.violation"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "action",
+          "reason_codes"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason_codes": {
+            "type": "array",
+            "minItems": 1
+          },
+          "details": {
+            "type": "object",
+            "required": [
+              "change_kind"
+            ],
+            "properties": {
+              "change_kind": {
+                "enum": [
+                  "added",
+                  "modified",
+                  "deleted",
+                  "renamed",
+                  "copied",
+                  "type_changed"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "enforcement.probe"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "action",
+          "result"
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "write_outside_scope",
+              "protected_paths",
+              "kernel_state",
+              "shell_commands",
+              "network",
+              "class_d_e_actions"
+            ]
+          },
+          "result": {
+            "enum": [
+              "ENFORCED",
+              "DETECTED",
+              "ADVISORY"
+            ]
+          },
+          "details": {
+            "type": "object",
+            "required": [
+              "host"
+            ],
+            "properties": {
+              "host": {
+                "enum": [
+                  "claude-code",
+                  "codex"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "package.resolved"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [],
+        "properties": {
+          "details": {
+            "type": "object",
+            "required": [
+              "lock_hash",
+              "packages"
+            ],
+            "properties": {
+              "packages": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[^@\\s]+@[^@\\s]+$"
+                }
+              },
+              "lock_hash": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "approval.recorded"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "approval_id",
+          "result"
+        ],
+        "properties": {
+          "approval_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "result": {
+            "enum": [
+              "VALID",
+              "REJECTED"
+            ]
+          },
+          "details": {
+            "type": "object",
+            "required": [
+              "action",
+              "source"
+            ],
+            "properties": {
+              "source": {
+                "enum": [
+                  "local",
+                  "gitlab"
+                ]
+              },
+              "action": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "blocker.raised"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "reason_codes"
+        ],
+        "properties": {
+          "reason_codes": {
+            "type": "array",
+            "minItems": 1
+          },
+          "details": {
+            "type": "object",
+            "required": [
+              "resume_state"
+            ],
+            "properties": {
+              "resume_state": {
+                "enum": [
+                  "CREATED",
+                  "INITIALISING",
+                  "PLANNING",
+                  "PLAN_REVIEW",
+                  "TEST_DESIGN",
+                  "DEVELOPING",
+                  "DEVELOPMENT_REVIEW",
+                  "VERIFYING",
+                  "EVALUATING",
+                  "REWORK_PLANNING",
+                  "PASSED",
+                  "FAILED",
+                  "BLOCKED",
+                  "INCONCLUSIVE"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "blocker.resolved"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [],
+        "properties": {
+          "details": {
+            "type": "object",
+            "required": [
+              "resume_state"
+            ],
+            "properties": {
+              "resume_state": {
+                "enum": [
+                  "CREATED",
+                  "INITIALISING",
+                  "PLANNING",
+                  "PLAN_REVIEW",
+                  "TEST_DESIGN",
+                  "DEVELOPING",
+                  "DEVELOPMENT_REVIEW",
+                  "VERIFYING",
+                  "EVALUATING",
+                  "REWORK_PLANNING",
+                  "PASSED",
+                  "FAILED",
+                  "BLOCKED",
+                  "INCONCLUSIVE"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "evaluation.result"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "result"
+        ],
+        "properties": {
+          "result": {
+            "enum": [
+              "PASSED",
+              "FAILED",
+              "BLOCKED",
+              "INCONCLUSIVE"
+            ]
+          },
+          "details": {
+            "type": "object",
+            "required": [
+              "failed_gates",
+              "rework_allowed",
+              "summary"
+            ],
+            "properties": {
+              "failed_gates": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "rework_allowed": {
+                "type": "boolean"
+              },
+              "summary": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "verdict.issued"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "result"
+        ],
+        "properties": {
+          "result": {
+            "enum": [
+              "PASSED",
+              "FAILED",
+              "BLOCKED",
+              "INCONCLUSIVE"
+            ]
+          },
+          "details": {
+            "type": "object",
+            "required": [
+              "authority",
+              "execution_profile",
+              "highest_level_passed",
+              "required_level",
+              "summary"
+            ],
+            "properties": {
+              "authority": {
+                "enum": [
+                  "advisory",
+                  "authoritative"
+                ]
+              },
+              "execution_profile": {
+                "enum": [
+                  "developer",
+                  "qe",
+                  "ci",
+                  "hardware-lab"
+                ]
+              },
+              "required_level": {
+                "enum": [
+                  "L0",
+                  "L1",
+                  "L2",
+                  "L3",
+                  "L4",
+                  "L5",
+                  "L6"
+                ]
+              },
+              "highest_level_passed": {
+                "enum": [
+                  "L0",
+                  "L1",
+                  "L2",
+                  "L3",
+                  "L4",
+                  "L5",
+                  "L6",
+                  null
+                ]
+              },
+              "summary": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

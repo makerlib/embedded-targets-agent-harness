@@ -4,7 +4,7 @@ A governed runtime for agent-assisted Embedded Targets engineering: one locked
 feature contract drives one bounded implementation, a kernel owns workflow
 state, and executed gates with preserved evidence decide completion. The
 authoritative build contract is the *Embedded Targets Harness Kernel
-Specification v1.1*.
+Specification v1.1.1* in `docs/specification/`.
 
 ## Status
 
@@ -14,6 +14,7 @@ features are claimed here.
 | Feature | Scope | Status |
 |---|---|---|
 | HK-001 | Kernel skeleton: package, CLI framework, layered config, schemas, Git repository port, atomic state store with integrity chain, audit log, reason codes | Implemented (bootstrapping rule, advisory) |
+| HK-015 | Read-only run monitor (`tools/monitor/`), audit record schema and event vocabulary | Implemented ahead of HK-003 at the feature owner's request (bootstrapping rule, advisory) |
 | HK-002 … HK-014 | Contracts and scope, state machine, gates, evaluator, MATLAB slice, personas, handoffs, packages, adapters, policy, rework, CI | Not started |
 
 Every `harness` command from spec §26 is registered. Commands whose feature is
@@ -31,6 +32,21 @@ harness config show-effective          # inside any Git repository
 harness config show-effective --json
 python -m pytest
 ```
+
+## Run monitor
+
+A read-only page for watching or replaying a run. See [`docs/monitor.md`](docs/monitor.md).
+
+```bash
+python tools/monitor/simulate_run.py --harness-dir /tmp/demo/.agent-harness --speed 30
+```
+
+```bash
+python tools/monitor/harness_monitor.py --harness-dir /tmp/demo/.agent-harness
+```
+
+Then open <http://127.0.0.1:8765/>. The page tests need Node Playwright and
+Chromium; without them they are skipped as `BLOCKED`.
 
 ## Configuration layers
 
@@ -73,9 +89,10 @@ src/et_harness/
   sessions/     atomic state store with integrity chain
   audit/        hash-chained JSON Lines audit log
   common/       reason codes, errors, canonical hashing, atomic I/O, YAML, schemas, redaction
-schemas/        JSON Schemas (draft 2020-12)
+schemas/        JSON Schemas (draft 2020-12); audit-record is generated from audit/vocabulary.py
+tools/monitor/  read-only run monitor (HK-015)
 features/       feature contracts and plans (HK features)
-docs/bootstrap-evidence/  evidence notes for HK-001..HK-003
+docs/bootstrap-evidence/  evidence notes for bootstrapped HK features
 ```
 
 ## Known limitations (HK-001)

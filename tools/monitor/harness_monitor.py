@@ -2,7 +2,12 @@
 """Read-only live monitor for the Embedded Targets agent harness.
 
 Serves index.html and streams the harness audit log and orchestration state
-file to the browser with Server-Sent Events (SSE).
+file to the browser with Server-Sent Events (SSE). Spec v1.1.1 §9.22.
+
+Default inputs (spec §7, §9.19.1, §16):
+
+    <harness-dir>/audit/audit.jsonl
+    <harness-dir>/state/orchestration-state.json
 
 It only reads files. It never writes to the repository, the harness state or
 the evidence, and it serves no file other than index.html.
@@ -45,12 +50,18 @@ class Sources:
     def audit_path(self) -> str | None:
         if self.audit_override:
             return self.audit_override if os.path.isfile(self.audit_override) else None
+        fixed = os.path.join(self.harness_dir, "audit", "audit.jsonl")
+        if os.path.isfile(fixed):
+            return fixed
         files = glob.glob(os.path.join(self.harness_dir, "audit", "*.jsonl"))
         return max(files, key=os.path.getmtime) if files else None
 
     def state_path(self) -> str | None:
         if self.state_override:
             return self.state_override if os.path.isfile(self.state_override) else None
+        fixed = os.path.join(self.harness_dir, "state", "orchestration-state.json")
+        if os.path.isfile(fixed):
+            return fixed
         candidates = []
         for ext in ("*.yaml", "*.yml", "*.json"):
             candidates += glob.glob(os.path.join(self.harness_dir, "state", ext))
@@ -101,6 +112,24 @@ def read_complete_lines(path: str, offset: int) -> tuple[list[tuple[int, str]], 
     return out, offset + cut + 1
 
 
+def display_path(path: str | None) -> str | None:
+    """Path relative to the working directory where possible (never raises on Windows)."""
+    if not path:
+        return None
+    try:
+        return os.path.relpath(path, os.getcwd())
+    except ValueError:  # different drive on Windows
+        return path
+
+
+def file_identity(path: str) -> tuple | None:
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    return (st.st_dev, st.st_ino)
+
+
 def file_sig(path: str | None) -> tuple | None:
     if not path:
         return None
@@ -126,7 +155,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self.send_error(405, "Read-only monitor")
 
-    do_PUT = do_PATCH = do_DELETE = do_POST
+    do_PUT = do_PATCH = do_DELETE = do_OPTIONS = do_TRACE = do_CONNECT = do_POST
 
     def do_HEAD(self):
         self.do_GET()
@@ -179,15 +208,16 @@ class Handler(BaseHTTPRequestHandler):
         state_path = self.sources.state_path()
         body = json.dumps({
             "kind": "harness-monitor-snapshot",
-            "audit_path": os.path.relpath(audit, os.getcwd()) if audit else None,
-            "state_path": os.path.relpath(state_path, os.getcwd()) if state_path else None,
+            "audit_path": display_path(audit),
+            "state_path": display_path(state_path),
             "offset": offset,
             "malformed": malformed,
             "events": events,
             "state": load_state(state_path) if state_path else None,
         }).encode("utf-8")
         self._headers("application/json", len(body))
-        self.wfile.write(body)
+        if self.command != "HEAD":
+            self.wfile.write(body)
 
     def _emit(self, event: str, data: str, event_id: int | None = None):
         msg = ""
@@ -205,7 +235,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Connection", "keep-alive")
         self.send_header("X-Accel-Buffering", "no")
         self.end_headers()
+        if self.command == "HEAD":
+            return
         audit_now = None
+        audit_identity = None
         state_seen = file_sig(self.sources.state_path())
         last_beat = time.monotonic()
         try:
@@ -216,9 +249,22 @@ class Handler(BaseHTTPRequestHandler):
                         offset = 0
                         self._emit("reset", "{}")
                     audit_now = audit
-                    self._emit("info", json.dumps({"audit_path": os.path.relpath(audit, os.getcwd()) if audit else None}))
+                    audit_identity = file_identity(audit) if audit else None
+                    self._emit("info", json.dumps({"audit_path": display_path(audit)}))
                 if audit:
-                    size = os.path.getsize(audit)
+                    identity = file_identity(audit)
+                    if identity is None:
+                        time.sleep(POLL_SECONDS)
+                        continue
+                    try:
+                        size = os.path.getsize(audit)
+                    except OSError:  # removed between stat calls; retry next poll
+                        time.sleep(POLL_SECONDS)
+                        continue
+                    if identity != audit_identity:  # replaced by a new file
+                        audit_identity = identity
+                        offset = 0
+                        self._emit("reset", "{}")
                     if size < offset:  # truncated or rotated
                         offset = 0
                         self._emit("reset", "{}")

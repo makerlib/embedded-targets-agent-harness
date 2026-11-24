@@ -2,6 +2,15 @@
 
 ## 0.1.0 (unreleased)
 
+### HK-015 Read-only run monitor
+
+- `tools/monitor/`: read-only live/replay/demo monitor (server, page, simulator, sample run).
+- `schemas/audit-record.schema.json`, generated from `et_harness.audit.vocabulary` (spec 1.1.1 §9.19).
+- Sample run converted to the 1.1.1 vocabulary with a verifiable hash chain.
+- Server: fixed default paths, 405 for all non-GET/HEAD methods, reset on a replaced log, Windows-safe paths.
+- Page: orders by `sequence`, warns on gaps, marks unregistered event types, shows transition reasons, labels verdict authority explicitly, states its coverage limits.
+- Simulator: re-chains hashes, writes a schema-valid state file, refuses to overwrite a non-empty log.
+
 ### HK-001 Kernel skeleton
 
 - Installable `et_harness` package with `harness` console entrypoint and single-source version.
