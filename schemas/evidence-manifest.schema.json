@@ -1,0 +1,343 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://embedded-targets.ai/schemas/evidence-manifest.schema.json",
+  "title": "Evidence manifest",
+  "description": "Spec \u00a721 manifest.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "kind",
+    "evidence_bundle",
+    "provenance",
+    "enforcement",
+    "verification",
+    "acceptance_criteria",
+    "gates",
+    "artefacts",
+    "failures",
+    "approvals",
+    "items",
+    "integrity"
+  ],
+  "properties": {
+    "api_version": {
+      "type": "string"
+    },
+    "kind": {
+      "const": "EvidenceManifest"
+    },
+    "evidence_bundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "feature_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workflow_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "profile": {
+          "enum": [
+            "full",
+            "lite"
+          ]
+        },
+        "authority": {
+          "enum": [
+            "advisory",
+            "authoritative"
+          ]
+        },
+        "execution_profile": {
+          "enum": [
+            "developer",
+            "qe",
+            "ci",
+            "hardware-lab"
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseline_commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "final_commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "workflow_state": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "feature_id",
+        "workflow_id",
+        "profile",
+        "authority",
+        "execution_profile",
+        "created_at",
+        "baseline_commit",
+        "final_commit"
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "harness_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "feature_contract_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "package_lock_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "agent_instances": {
+          "type": "array"
+        },
+        "independence": {
+          "enum": [
+            "same_model",
+            "different_model",
+            null
+          ]
+        },
+        "environment_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "matlab": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "harness_version",
+        "feature_contract_hash",
+        "package_lock_hash",
+        "agent_instances",
+        "independence",
+        "environment_fingerprint",
+        "matlab"
+      ]
+    },
+    "enforcement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "report": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lowest_tier_for_writes": {
+          "enum": [
+            "ENFORCED",
+            "DETECTED",
+            "ADVISORY",
+            null
+          ]
+        }
+      },
+      "required": [
+        "report",
+        "lowest_tier_for_writes"
+      ]
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required_level": {
+          "enum": [
+            "L0",
+            "L1",
+            "L2",
+            "L3",
+            "L4",
+            "L5",
+            "L6"
+          ]
+        },
+        "highest_level_attempted": {
+          "enum": [
+            "L0",
+            "L1",
+            "L2",
+            "L3",
+            "L4",
+            "L5",
+            "L6",
+            null
+          ]
+        },
+        "highest_level_passed": {
+          "enum": [
+            "L0",
+            "L1",
+            "L2",
+            "L3",
+            "L4",
+            "L5",
+            "L6",
+            null
+          ]
+        },
+        "mandatory_gates": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._<>-]*$"
+          }
+        }
+      },
+      "required": [
+        "required_level",
+        "highest_level_attempted",
+        "highest_level_passed",
+        "mandatory_gates"
+      ]
+    },
+    "acceptance_criteria": {
+      "type": "array"
+    },
+    "gates": {
+      "type": "array"
+    },
+    "artefacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "path",
+          "sha256",
+          "bytes"
+        ]
+      }
+    },
+    "failures": {
+      "type": "array"
+    },
+    "approvals": {
+      "type": "array"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "present",
+              "missing",
+              "not_implemented",
+              "not_applicable"
+            ]
+          },
+          "planned_feature": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "path",
+          "status"
+        ]
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "missing": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "not_implemented": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "manifest_hash": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "complete",
+        "missing",
+        "not_implemented",
+        "manifest_hash"
+      ]
+    }
+  }
+}

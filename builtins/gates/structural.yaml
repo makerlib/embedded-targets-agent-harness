@@ -1,0 +1,34 @@
+# Built-in L0 structural gate (spec §12 L0, §20).
+api_version: embedded-targets.ai/v1
+kind: VerificationGate
+
+gate:
+  id: structural
+  version: 1.0.0
+  name: Structural validation
+  level: L0
+  owner_persona: qe
+  baseline: must_pass
+  description: Validates the feature contract, project configuration and scope lock.
+
+preconditions: []
+
+actions:
+  - id: validate-structure
+    tool: harness.schema-validator
+    timeout_seconds: 120
+    inputs: {}
+
+evidence:
+  required:
+    - structural-result
+
+pass_conditions:
+  - action_exit_code_zero
+  - all_required_evidence_present
+
+failure_policy:
+  maximum_retries: 1
+  preserve_failed_attempts: true
+  require_retry_reason: true
+  on_precondition_failure: BLOCKED

@@ -24,8 +24,13 @@ def project_context(
         qe_test_paths=contract.qe_test_paths if contract else (),
         project_classes=project.get("artefact_classes"),
     )
+    from et_harness.gates.definitions import GateRegistry
+
+    # Registered gate definitions are authoritative for levels; project.yaml
+    # `gate_levels` only covers gates that have no definition yet.
+    gate_levels = {**dict(project.get("gate_levels") or {}), **GateRegistry.load(Path(project_root)).levels()}
     context = LintContext(
-        gate_levels=dict(project.get("gate_levels") or {}),
+        gate_levels=gate_levels,
         public_api_paths=tuple(project.get("public_api_paths") or ()),
         classifier=classifier,
         lite_max_level=loaded.effective.value("lite.max_verification_level"),

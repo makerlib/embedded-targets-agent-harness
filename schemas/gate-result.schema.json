@@ -1,0 +1,392 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://embedded-targets.ai/schemas/gate-result.schema.json",
+  "title": "Gate attempt",
+  "description": "One immutable gate attempt (spec \u00a720 GateAttempt).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "kind",
+    "gate_id",
+    "gate_version",
+    "level",
+    "attempt",
+    "workflow_id",
+    "feature_id",
+    "execution_profile",
+    "purpose",
+    "authority",
+    "rework_cycle",
+    "start_time",
+    "end_time",
+    "tool_invocations",
+    "exit_code",
+    "test_counts",
+    "result",
+    "reason_codes",
+    "conditions",
+    "artefacts",
+    "stdout_path",
+    "stderr_path",
+    "log_hash",
+    "failure_signature",
+    "retry_reason"
+  ],
+  "properties": {
+    "api_version": {
+      "type": "string"
+    },
+    "kind": {
+      "const": "GateAttempt"
+    },
+    "gate_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._<>-]*$"
+    },
+    "gate_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "level": {
+      "enum": [
+        "L0",
+        "L1",
+        "L2",
+        "L3",
+        "L4",
+        "L5",
+        "L6"
+      ]
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "workflow_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "feature_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "execution_profile": {
+      "enum": [
+        "developer",
+        "qe",
+        "ci",
+        "hardware-lab"
+      ]
+    },
+    "purpose": {
+      "enum": [
+        "baseline",
+        "test design",
+        "development check",
+        "verification"
+      ]
+    },
+    "authority": {
+      "enum": [
+        "advisory",
+        "authoritative"
+      ]
+    },
+    "rework_cycle": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "start_time": {
+      "type": "string",
+      "minLength": 1
+    },
+    "end_time": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tool_invocations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "action_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tool": {
+            "type": "string",
+            "minLength": 1
+          },
+          "execution_mode": {
+            "enum": [
+              "process",
+              "session"
+            ]
+          },
+          "exit_code": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "timed_out": {
+            "type": "boolean"
+          },
+          "stdout_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stderr_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stdout_truncated": {
+            "type": "boolean"
+          },
+          "stderr_truncated": {
+            "type": "boolean"
+          },
+          "skipped_by_condition": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "action_id",
+          "tool",
+          "exit_code",
+          "duration_ms"
+        ]
+      }
+    },
+    "exit_code": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "test_counts": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "run": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "passed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "failed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "skipped": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "run",
+            "passed",
+            "failed",
+            "skipped"
+          ]
+        }
+      ]
+    },
+    "result": {
+      "enum": [
+        "PASSED",
+        "FAILED",
+        "BLOCKED",
+        "INCONCLUSIVE"
+      ]
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "conditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "failed",
+              "not_applicable"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ]
+      }
+    },
+    "preconditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "failed"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ]
+      }
+    },
+    "artefacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "evidence_id",
+          "path",
+          "sha256"
+        ]
+      }
+    },
+    "stdout_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "stderr_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "log_hash": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "failure_signature": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "failure_summary": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "retry_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "baseline_test_counts": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "run": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "passed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "failed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "skipped": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "run",
+            "passed",
+            "failed",
+            "skipped"
+          ]
+        }
+      ]
+    }
+  }
+}

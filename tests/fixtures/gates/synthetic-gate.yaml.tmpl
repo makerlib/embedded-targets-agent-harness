@@ -1,0 +1,21 @@
+# SYNTHETIC TEST FIXTURE: stands in for a real {gate_id} gate. It is not MATLAB.
+api_version: embedded-targets.ai/v1
+kind: VerificationGate
+gate:
+  id: {gate_id}
+  version: 0.0.1
+  name: Synthetic {gate_id}
+  level: {level}
+  baseline: record
+actions:
+  - id: run
+    tool: process.command
+    timeout_seconds: 60
+    inputs:
+      argv: ["{python}", "{script}", "--junit", "{attempt_dir}/junit.xml", "--repo", "{repo}"{extra}]
+      junit: "{attempt_dir}/junit.xml"
+evidence:
+  required: [junit-results, test-counts]
+pass_conditions: [action_exit_code_zero, zero_failed_tests, test_count_not_below_baseline, all_required_evidence_present]
+failure_policy:
+  maximum_retries: 1

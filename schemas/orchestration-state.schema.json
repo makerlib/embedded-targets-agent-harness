@@ -471,6 +471,55 @@
             "string",
             "null"
           ]
+        },
+        "baseline_test_counts": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "run": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "passed": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "failed": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "skipped": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "run",
+                  "passed",
+                  "failed",
+                  "skipped"
+                ]
+              }
+            ]
+          }
+        },
+        "baseline_gates": {
+          "type": "object",
+          "additionalProperties": {
+            "enum": [
+              "PASSED",
+              "FAILED",
+              "BLOCKED",
+              "INCONCLUSIVE"
+            ]
+          }
         }
       }
     }

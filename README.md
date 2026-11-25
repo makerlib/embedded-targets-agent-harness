@@ -16,8 +16,9 @@ features are claimed here.
 | HK-001 | Kernel skeleton: package, CLI framework, layered config, schemas, Git repository port, atomic state store with integrity chain, audit log, reason codes | Implemented (bootstrapping rule, advisory) |
 | HK-002 | Feature contracts (RFC 8785 hashing, lint, local owner approval, lock), artefact classes, scope validation, tree-hash checkpoints; `harness feature create/lint/approve` | Implemented (bootstrapping rule, advisory) |
 | HK-003 | Orchestration state machine (§15 table, ownership, revisioned and audited transitions, block/resume, tamper recovery); `harness workflow create/start/status/history/block/resume/cancel` | Implemented (bootstrapping rule, advisory) |
+| HK-004 | Gate engine and evidence: gate definitions and registry, sequential executor, attempts/retries/timeouts/profiles, process and session tools, JUnit counts, baseline gates at start, evidence bundle; `harness gate run`, `verify`, `evidence collect/validate` | Implemented (advisory) |
 | HK-015 | Read-only run monitor (`tools/monitor/`), audit record schema and event vocabulary | Implemented ahead of HK-003 at the feature owner's request (bootstrapping rule, advisory) |
-| HK-004 … HK-014 | Contracts and scope, state machine, gates, evaluator, MATLAB slice, personas, handoffs, packages, adapters, policy, rework, CI | Not started |
+| HK-005 … HK-014 | Contracts and scope, state machine, gates, evaluator, MATLAB slice, personas, handoffs, packages, adapters, policy, rework, CI | Not started |
 
 Every `harness` command from spec §26 is registered. Commands whose feature is
 not built report `NOT_IMPLEMENTED` and exit with code 3. They never report
@@ -67,6 +68,29 @@ claimed. Kernel state lives in `.agent-harness/state/` (git-ignored). If it is
 edited outside the kernel, the next command quarantines the edit, restores
 the last-known-good copy and blocks with `STATE_TAMPER_DETECTED`; resume
 needs `--maintainer-recovery`.
+
+## Gates and evidence
+
+Gates are YAML definitions (spec §20): built-ins in `builtins/gates/`
+(`structural`, L0) and project gates in `.agent-harness/gates/` (this
+repository defines `kernel-pytest`, L1). `workflow start` runs the contract's
+required gates once with purpose *baseline* and records test counts.
+
+```bash
+harness gate run kernel-pytest          # one attempt
+harness verify --execution-profile qe   # all required gates, in dependency order
+harness evidence collect                # writes the §21 bundle and manifest
+harness evidence validate               # re-hashes every file
+```
+
+Attempts are numbered, written once and made read-only; a further baseline or
+verification attempt in the same rework cycle needs `--retry-reason` and is
+limited by the gate's `maximum_retries`. `ci` and `hardware-lab` profiles run
+only on the matching runner, and every verdict input produced so far is
+*advisory*. The manifest lists evidence that later features produce (package
+lock, plan, enforcement report, QE result, verdict) as `not_implemented` and
+reports `complete: false` until they exist. `process.command` runs only the
+argv written in the gate definition, without a shell.
 
 ## Run monitor
 

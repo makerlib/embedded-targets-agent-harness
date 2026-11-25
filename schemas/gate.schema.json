@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://embedded-targets.ai/schemas/gate.schema.json",
+  "title": "Verification gate",
+  "description": "Gate definition (spec \u00a720).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "kind",
+    "gate",
+    "actions",
+    "evidence",
+    "pass_conditions",
+    "failure_policy"
+  ],
+  "properties": {
+    "api_version": {
+      "type": "string"
+    },
+    "kind": {
+      "const": "VerificationGate"
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._<>-]*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "level": {
+          "enum": [
+            "L0",
+            "L1",
+            "L2",
+            "L3",
+            "L4",
+            "L5",
+            "L6"
+          ]
+        },
+        "owner_persona": {
+          "enum": [
+            "qe",
+            "kernel",
+            "development"
+          ]
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._<>-]*$"
+          },
+          "uniqueItems": true
+        },
+        "baseline": {
+          "enum": [
+            "must_pass",
+            "record"
+          ]
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "name",
+        "level"
+      ]
+    },
+    "preconditions": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "type": "object",
+            "minProperties": 1,
+            "maxProperties": 1,
+            "additionalProperties": {
+              "type": [
+                "string",
+                "array",
+                "boolean"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tool": {
+            "type": "string",
+            "minLength": 1
+          },
+          "execution_mode": {
+            "enum": [
+              "process",
+              "session"
+            ]
+          },
+          "timeout_seconds": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "developer": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "qe": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "ci": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "hardware-lab": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "default": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              }
+            ]
+          },
+          "inputs": {
+            "type": "object"
+          },
+          "requires_approval": {
+            "type": "boolean"
+          },
+          "when": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "object",
+                "minProperties": 1,
+                "maxProperties": 1,
+                "additionalProperties": {
+                  "type": [
+                    "string",
+                    "array",
+                    "boolean"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "tool",
+          "timeout_seconds"
+        ]
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "required"
+      ]
+    },
+    "pass_conditions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "enum": [
+          "action_exit_code_zero",
+          "all_required_evidence_present",
+          "zero_failed_tests",
+          "test_count_not_below_baseline"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "failure_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maximum_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "preserve_failed_attempts": {
+          "const": true
+        },
+        "require_retry_reason": {
+          "const": true
+        },
+        "on_precondition_failure": {
+          "const": "BLOCKED"
+        }
+      },
+      "required": [
+        "maximum_retries"
+      ]
+    }
+  }
+}

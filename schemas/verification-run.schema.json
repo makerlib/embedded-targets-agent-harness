@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://embedded-targets.ai/schemas/verification-run.schema.json",
+  "title": "Verification run",
+  "description": "Persisted record of one sequential executor run (\u00a79.15).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "kind",
+    "run_id",
+    "status",
+    "created_at",
+    "steps"
+  ],
+  "properties": {
+    "api_version": {
+      "type": "string"
+    },
+    "kind": {
+      "const": "VerificationRun"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workflow_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "execution_profile": {
+      "enum": [
+        "developer",
+        "qe",
+        "ci",
+        "hardware-lab",
+        null
+      ]
+    },
+    "status": {
+      "enum": [
+        "running",
+        "completed",
+        "failed",
+        "blocked",
+        "paused_for_approval",
+        "cancelled"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "step",
+              "cleanup"
+            ]
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "running",
+              "passed",
+              "failed",
+              "blocked",
+              "inconclusive",
+              "skipped_by_condition",
+              "paused_for_approval",
+              "cancelled",
+              "not_run"
+            ]
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reason_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "message": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "started_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ended_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "attempts"
+        ]
+      }
+    }
+  }
+}

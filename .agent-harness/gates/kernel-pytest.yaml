@@ -1,0 +1,44 @@
+# The harness repository's own L1 gate: the full pytest suite (self-hosting).
+api_version: embedded-targets.ai/v1
+kind: VerificationGate
+
+gate:
+  id: kernel-pytest
+  version: 1.0.0
+  name: Kernel test suite
+  level: L1
+  owner_persona: qe
+  depends_on: [structural]
+  baseline: must_pass
+
+preconditions:
+  - file_exists: pyproject.toml
+
+actions:
+  - id: run-pytest
+    tool: process.command
+    timeout_seconds:
+      developer: 900
+      qe: 900
+      ci: 1800
+    inputs:
+      argv: ["{python}", "-m", "pytest", "-q", "-p", "no:cacheprovider", "--junitxml={attempt_dir}/junit.xml"]
+      cwd: "{repo}"
+      junit: "{attempt_dir}/junit.xml"
+
+evidence:
+  required:
+    - junit-results
+    - test-counts
+
+pass_conditions:
+  - action_exit_code_zero
+  - zero_failed_tests
+  - test_count_not_below_baseline
+  - all_required_evidence_present
+
+failure_policy:
+  maximum_retries: 1
+  preserve_failed_attempts: true
+  require_retry_reason: true
+  on_precondition_failure: BLOCKED

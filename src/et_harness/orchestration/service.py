@@ -38,7 +38,6 @@ LOCAL_DATA_GLOBS = (".agent-harness/state/**", ".agent-harness/handoffs/**", ".a
 
 NOT_YET = (
     ("required_packages_resolved", "HK-009", "package resolution and lock verification"),
-    ("baseline_passed", "HK-004", "baseline gate run and baseline test counts"),
     ("host_guards_and_enforcement_probes", "HK-010", "host detection, guard installation and tier probes"),
 )
 
@@ -337,13 +336,124 @@ class WorkflowService:
         else:
             lock_store.create(lock_record)
 
+        # baseline_passed (§14.2 step 9): run the required gates with purpose baseline.
+        baseline_result = self._run_baseline(doc, contract, lock["contract_hash"])
+        checks.append(baseline_result["check"])
+        record = [c.to_dict() for c in checks]
+        init = {"checks": record, "baseline_fingerprint": None, "scope_lock_hash": lock["contract_hash"],
+                "baseline_test_counts": baseline_result["counts"], "baseline_gates": baseline_result["results"]}
+
         def extra(d: dict[str, Any]) -> None:
             d["contract"]["hash"] = lock["contract_hash"]
             d["repository"]["baseline_commit"] = baseline.head_commit
-            d["initialisation"] = {"checks": record, "baseline_fingerprint": None,
-                                   "scope_lock_hash": lock["contract_hash"]}
+            d["initialisation"] = init
 
+        outcome = baseline_result["outcome"]
+        if outcome == "failed":
+            return engine.transition(revision, State.FAILED, "BASELINE_FAILURE_ESTABLISHED", extra=extra)
+        if outcome == "blocked":
+            return engine.transition(revision, State.BLOCKED, "BLOCKER_RAISED",
+                                     reason_codes=baseline_result["codes"] or [ReasonCode.BASELINE_FAILED],
+                                     message=baseline_result["check"].message, resume_state=State.INITIALISING,
+                                     extra=extra)
         return engine.transition(revision, State.PLANNING, "INITIALISATION_PASSED", extra=extra)
+
+    def _run_baseline(self, doc: dict[str, Any], contract: FeatureContract, contract_hash: str) -> dict[str, Any]:
+        """Run every required gate once with purpose baseline (§14.2, §20 baseline field).
+
+        ``baseline: must_pass`` gates must pass, else FAILED (baseline failure
+        established). ``record`` gates may fail (acceptance tests are expected to
+        fail before implementation) but must run: BLOCKED or INCONCLUSIVE blocks.
+        """
+        import copy
+
+        from et_harness.gates.definitions import GateRegistry
+        from et_harness.gates.verify import run_verification
+
+        gate_doc = copy.deepcopy(doc)
+        gate_doc["contract"]["hash"] = contract_hash
+        try:
+            registry = GateRegistry.load(self.root)
+            config = load_configuration(self.root).effective
+            result = run_verification(
+                contract.required_gates, repo_root=self.root, workflow=gate_doc, registry=registry,
+                audit=self.audit, execution_profile="developer",
+                retry_reason="baseline re-run during re-initialisation",
+                output_limit_bytes=config.value("tools.output_limit_bytes"),
+                redaction_patterns=tuple(config.value("audit.redaction_patterns")))
+        except HarnessError as exc:
+            return {"outcome": "blocked", "codes": [exc.code], "counts": {}, "results": {},
+                    "check": Check("baseline_passed", "failed", exc.code, exc.message)}
+        counts = {g: a["test_counts"] for g, a in result.attempts.items() if a["test_counts"] is not None}
+        results = {g: a["result"] for g, a in result.attempts.items()}
+        refused = [g for g in contract.required_gates if g not in result.attempts]
+        must_fail = [g for g, a in result.attempts.items()
+                     if registry.get(g).baseline == "must_pass" and a["result"] == "FAILED"]
+        not_run = [g for g, a in result.attempts.items() if a["result"] in ("BLOCKED", "INCONCLUSIVE")] + refused
+        codes = sorted({c for a in result.attempts.values() for c in a["reason_codes"]})
+        summary = ", ".join(f"{g}={r}" for g, r in results.items()) or "no gates ran"
+        if not_run:
+            return {"outcome": "blocked", "codes": [ReasonCode(c) for c in codes] or [ReasonCode.BASELINE_FAILED],
+                    "counts": counts, "results": results,
+                    "check": Check("baseline_passed", "failed", ReasonCode.BASELINE_FAILED,
+                                   f"baseline gates could not run: {', '.join(not_run)} ({summary})")}
+        if must_fail:
+            return {"outcome": "failed", "codes": [ReasonCode.BASELINE_FAILED], "counts": counts, "results": results,
+                    "check": Check("baseline_passed", "failed", ReasonCode.BASELINE_FAILED,
+                                   f"must-pass baseline gates failed: {', '.join(must_fail)}")}
+        return {"outcome": "passed", "codes": [], "counts": counts, "results": results,
+                "check": Check("baseline_passed", "passed", message=summary)}
+
+    # --- gates and verification (HK-004) ----------------------------------------------
+    def _gate_settings(self) -> dict[str, Any]:
+        config = load_configuration(self.root).effective
+        return {"output_limit_bytes": config.value("tools.output_limit_bytes"),
+                "redaction_patterns": tuple(config.value("audit.redaction_patterns"))}
+
+    def _locked_required_gates(self, doc: dict[str, Any]) -> list[str]:
+        if not self.lock_path.exists():
+            raise HarnessError(ReasonCode.CONTRACT_HASH_MISMATCH, "contract is not locked; run `harness workflow start`")
+        return list(self._lock_store(doc["workflow"]["id"]).load()["contract"]["verification"]["required_gates"])
+
+    def run_gate(self, gate_id: str, *, execution_profile: str = "developer",
+                 retry_reason: str | None = None) -> dict[str, Any]:
+        from et_harness.gates.definitions import GateRegistry
+        from et_harness.gates.runner import GateRunContext, GateRunner
+
+        doc = self.open().document
+        if doc["workflow"]["current_state"] == State.INITIALISING.value:
+            raise HarnessError(ReasonCode.TRANSITION_NOT_ALLOWED,
+                               "baseline gates run as part of `harness workflow start`")
+        runner = GateRunner(GateRegistry.load(self.root), self.audit)
+        return runner.run_gate(gate_id, GateRunContext(self.root, doc, execution_profile=execution_profile,
+                                                       retry_reason=retry_reason, **self._gate_settings()))
+
+    def verify(self, *, execution_profile: str = "developer", retry_reason: str | None = None,
+               resume_run: str | None = None) -> dict[str, Any]:
+        from et_harness.gates.definitions import GateRegistry
+        from et_harness.gates.verify import run_verification
+
+        doc = self.open().document
+        state = State(doc["workflow"]["current_state"])
+        if state not in (State.TEST_DESIGN, State.DEVELOPING, State.VERIFYING):
+            raise HarnessError(ReasonCode.TOOL_PERMISSION_DENIED,
+                               f"verify runs in TEST_DESIGN, DEVELOPING or VERIFYING, not {state.value}")
+        gates = self._locked_required_gates(doc)
+        result = run_verification(gates, repo_root=self.root, workflow=doc, registry=GateRegistry.load(self.root),
+                                  audit=self.audit, execution_profile=execution_profile,
+                                  retry_reason=retry_reason, resume_run=resume_run, **self._gate_settings())
+        summary = {"run_id": result.run_id, "run_status": result.status, "gates": {
+            g: {"attempt": a["attempt"], "result": a["result"], "reason_codes": a["reason_codes"],
+                "test_counts": a["test_counts"]} for g, a in result.attempts.items()},
+            "reason_codes": result.reason_codes, "state": state.value, "transition": None}
+        lite_done = (state is State.VERIFYING and doc["workflow"]["profile"] == "lite"
+                     and result.status in ("completed", "failed"))
+        if lite_done:
+            new = self._engine(doc["workflow"]["id"]).transition(
+                doc["workflow"]["revision"], State.EVALUATING, "GATE_RUN_RECORDED")
+            summary["state"] = new["workflow"]["current_state"]
+            summary["transition"] = "VERIFYING -> EVALUATING (GATE_RUN_RECORDED)"
+        return summary
 
     # --- status, history, block, resume, cancel --------------------------------------
     def status(self) -> dict[str, Any]:

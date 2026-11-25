@@ -2,6 +2,15 @@
 
 ## 0.1.0 (unreleased)
 
+### HK-004 Gate engine and evidence
+
+- Gate definitions (`gate.schema.json`), registry (built-in + project), dependency/level ordering, cycle detection; lint uses registry levels.
+- Sequential executor: pre/postconditions, `when`, approval pauses, retry policy, cancellation with cleanup, persisted resumable runs.
+- Gate runner: immutable numbered attempts, preconditions (never skipped), dependencies, pass conditions, timeouts with process-tree kill, retry reasons and limits, failure signatures, execution profiles.
+- Tools: `process.command` (no shell, separate redacted and size-limited streams), `harness.schema-validator`, session-scoped tool supervision.
+- JUnit test counts; baseline gates at `workflow start`; lite `verify` moves VERIFYING to EVALUATING.
+- Evidence bundle and manifest (§21) with `harness evidence collect | validate`.
+
 ### HK-003 Orchestration state machine
 
 - §13 states, §15 transition table (data), §13.2 ownership for both profiles.

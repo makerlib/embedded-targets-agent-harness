@@ -32,6 +32,23 @@ gate_levels: {matlab-unittest: L1, codegen-compile-reference: L3}
 """
 
 
+GATES_FIXTURE = REPO / "tests" / "fixtures" / "gates"
+
+
+def install_synthetic_gates(root: Path, extra: dict[str, str] | None = None) -> None:
+    """Synthetic stand-ins for the fixture contract's gates (they are not MATLAB)."""
+    gates = root / ".agent-harness" / "gates"
+    gates.mkdir(parents=True, exist_ok=True)
+    template = (GATES_FIXTURE / "synthetic-gate.yaml.tmpl").read_text()
+    script = str(GATES_FIXTURE / "synthetic_suite.py")
+    for gate_id, level in (("matlab-unittest", "L1"), ("codegen-compile-reference", "L3")):
+        text = template
+        for key, value in {"gate_id": gate_id, "level": level, "script": script,
+                           "extra": (extra or {}).get(gate_id, "")}.items():
+            text = text.replace("{" + key + "}", value)
+        (gates / f"{gate_id}.yaml").write_text(text)
+
+
 def git(root: Path, *args: str) -> str:
     return subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, text=True).stdout
 
@@ -66,6 +83,7 @@ def product(tmp_path: Path, monkeypatch) -> Path:
     (root / ".agent-harness" / "project.yaml").write_text(PROJECT)
     (root / "src" / "blocks" / "adc").mkdir(parents=True)
     (root / "src" / "blocks" / "adc" / "adc.c").write_text("int adc;\n")
+    install_synthetic_gates(root)
     (root / "features" / "active").mkdir(parents=True)
     write_approved(root / "features" / "active" / "FEATURE-001.yaml")
     git(root, "add", "-A")
@@ -91,8 +109,12 @@ def test_create_and_start_reach_planning(product: Path) -> None:
     checks = {c["id"]: c["status"] for c in doc["initialisation"]["checks"]}
     assert checks["repository_acceptable"] == checks["owner_approval_valid"] == "passed"
     assert checks["contract_and_scope_locked"] == "passed"
+    assert checks["baseline_passed"] == "passed"
     assert {k for k, v in checks.items() if v == "not_implemented"} == {
-        "required_packages_resolved", "baseline_passed", "host_guards_and_enforcement_probes"}
+        "required_packages_resolved", "host_guards_and_enforcement_probes"}
+    assert doc["initialisation"]["baseline_gates"] == {
+        "structural": "PASSED", "matlab-unittest": "PASSED", "codegen-compile-reference": "PASSED"}
+    assert doc["initialisation"]["baseline_test_counts"]["matlab-unittest"]["run"] == 3
     lock = json.loads((product / ".agent-harness" / "state" / "scope-lock.json").read_text())
     assert lock["kind"] == "ScopeLock" and lock["contract_hash"] == doc["contract"]["hash"]
     for entry in AuditLog(product / ".agent-harness" / "audit" / "audit.jsonl").entries():
