@@ -1,0 +1,179 @@
+# HK-004 feature contract: gate engine and evidence (spec v1.1.1 §9.15-§9.17, §20, §21, §30).
+# First feature after the bootstrapping rule: locked with the kernel's own
+# contract and scope services. Its gates are still pytest, because the gate
+# engine is this feature; from HK-005 on, gates run through `harness verify`.
+api_version: embedded-targets.ai/v1
+kind: FeatureContract
+
+metadata:
+  id: HK-004
+  title: Gate engine and evidence
+  owner: feature-owner
+  target_context:
+    family: none
+    release: none
+
+profile: full
+objective: >
+  Deliver the verification engine: gate definitions and registry, a sequential
+  step executor, gate execution with preconditions, ordering, attempts,
+  timeouts, retries and execution profiles, process and session-scoped tools,
+  JUnit test-count capture, baseline gates at INITIALISING, and the §21
+  evidence bundle with a hashed manifest, behind `harness gate run`,
+  `harness verify` and `harness evidence collect|validate`.
+
+acceptance_criteria:
+  - id: AC-001
+    statement: >
+      Gate definitions validate against schemas/gate.schema.json (§20). The
+      registry loads builtins/gates and the project's .agent-harness/gates,
+      and rejects duplicate IDs, unknown tools, unknown preconditions or pass
+      conditions, and dependency cycles. Contract lint takes gate levels from
+      the registry.
+    verification_method: gate
+    gates: [structural, kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-002
+    statement: >
+      The sequential executor (§9.15) runs ordered steps with preconditions,
+      postconditions and `when` conditions; a step needing approval stops the
+      run with APPROVAL_REQUIRED; per-step retry policy, timeout and failure
+      propagation apply; cancellation and failure still run cleanup steps; the
+      run record is persisted and a run resumes from its first incomplete
+      step; every step leaves step-level evidence.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-003
+    statement: >
+      Gates run in dependency and level order. A failed precondition gives
+      BLOCKED with GATE_PRECONDITION_FAILED and is never skipped; a gate whose
+      dependency did not pass is BLOCKED; pass conditions are evaluated
+      deterministically; missing required evidence prevents PASSED
+      (GATE_EVIDENCE_MISSING); a timeout kills the process tree and gives
+      INCONCLUSIVE with GATE_TIMEOUT.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-004
+    statement: >
+      Attempts are numbered, written once and made read-only; failed attempts
+      are preserved; a retry needs a reason and the retry limit is enforced
+      (RETRY_LIMIT_EXCEEDED); the aggregate reflects all attempts; failed
+      attempts record a normalised failure signature.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-005
+    statement: >
+      Execution profiles developer, qe, ci and hardware-lab select per-profile
+      timeouts. ci requires a GitLab CI environment and hardware-lab a
+      registered runner marker, otherwise MANDATORY_DEPENDENCY_UNAVAILABLE.
+      All HK-004 evidence is marked advisory.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-006
+    statement: >
+      The process.command tool runs only the argv fixed in the gate
+      definition, never through a shell, captures stdout and stderr
+      separately, limits output size and redacts secrets. The
+      harness.schema-validator tool validates the contract, project
+      configuration and scope lock. Session-scoped tools reuse one session
+      across consecutive actions and are stopped on completion, failure and
+      cancellation.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-007
+    statement: >
+      JUnit XML results become test counts {run, passed, failed, skipped};
+      the zero_failed_tests and test_count_not_below_baseline pass conditions
+      use them.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-008
+    statement: >
+      `workflow start` runs the contract's required gates with purpose
+      baseline and records their test counts. A gate marked `baseline:
+      must_pass` that fails moves the workflow to FAILED
+      (BASELINE_FAILURE_ESTABLISHED), and a blocked baseline gate moves it to
+      BLOCKED. This replaces HK-003's NOT_IMPLEMENTED baseline check.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-009
+    statement: >
+      `harness evidence collect` builds the §21 bundle with a manifest of
+      SHA-256 hashes, provenance, environment fingerprint, criterion-to-gate
+      mapping and authority advisory. It lists items owned by later features
+      (package lock, plan, enforcement report, QE result, verdict) as
+      not_implemented and reports complete=false while any are open.
+      `harness evidence validate` detects modified, missing or added files.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-010
+    statement: >
+      `harness gate run <gate-id>` and `harness verify --execution-profile`
+      work with --json and defined exit codes. In the lite profile, a kernel
+      verify run in VERIFYING moves the workflow to EVALUATING with
+      GATE_RUN_RECORDED. gate.attempt and tool.executed audit events
+      validate against the audit-record schema.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+
+scope:
+  allowed_paths:
+    - src/et_harness/gates/**
+    - src/et_harness/workflows/**
+    - src/et_harness/evidence/**
+    - src/et_harness/tools/**
+    - src/et_harness/orchestration/**
+    - src/et_harness/contracts/__init__.py
+    - src/et_harness/contracts/context.py
+    - src/et_harness/artefacts/__init__.py
+    - src/et_harness/sessions/documents.py
+    - src/et_harness/cli/**
+    - schemas/gate.schema.json
+    - schemas/gate-result.schema.json
+    - schemas/evidence-manifest.schema.json
+    - schemas/verification-run.schema.json
+    - schemas/orchestration-state.schema.json
+    - builtins/gates/**
+    - .agent-harness/gates/**
+    - tests/unit/**
+    - tests/integration/**
+    - tests/fixtures/**
+    - docs/bootstrap-evidence/HK-004.md
+    - README.md
+    - CHANGELOG.md
+  protected_paths:
+    - features/active/**
+    - features/completed/**
+    - docs/specification/**
+    - src/et_harness/audit/**
+    - src/et_harness/sessions/state_store.py
+    - schemas/audit-record.schema.json
+    - tools/monitor/**
+  qe_test_paths: []
+
+verification:
+  required_level: L1
+  required_gates: [structural, kernel-pytest]
+  qe_test_design: "off"
+
+approvals:
+  required: []
+
+rework:
+  maximum_cycles: 3
+
+intake:
+  drafted_by: claude-code-implementer
+  approved_by: "feature-owner"
+  approval_ref: "local"
+  approved_at: "2026-11-25T01:00:33Z"
+  approved_content_hash: "sha256:047b7c194571eb66e4afd484a114f462843bbce27d210f1a3046bd72f014c046"
