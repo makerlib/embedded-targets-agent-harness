@@ -41,7 +41,6 @@ LATER_ITEMS = (
     ("enforcement-report", "enforcement.yaml", "HK-010"),
     ("handoffs", "handoffs/", "HK-008"),
     ("model-diffs", "model-diffs/", "HK-008"),
-    ("verdict", "verdict.yaml", "HK-005"),
 )
 
 
@@ -156,6 +155,12 @@ def collect(service) -> dict[str, Any]:
                       "message": "" if verification else "no verification attempt in the current rework cycle"})
     for item_id, rel, planned in LATER_ITEMS:
         items.append({"id": item_id, "path": rel, "status": "not_implemented", "planned_feature": planned})
+    # The evaluator writes verdict.yaml after collection (HK-005), so it never
+    # counts against completeness of the manifest it evaluates.
+    verdict_present = (bundle / "verdict.yaml").is_file()
+    items.append({"id": "verdict", "path": "verdict.yaml", "status": "present" if verdict_present else "not_applicable",
+                  "planned_feature": None,
+                  "message": "" if verdict_present else "written by the evaluator after collection"})
     if wf["profile"] == "full":
         items.append({"id": "qe-result", "path": "qe-result.yaml", "status": "not_implemented",
                       "planned_feature": "HK-012"})

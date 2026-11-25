@@ -1,0 +1,325 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://embedded-targets.ai/schemas/verdict.schema.json",
+  "title": "Feature verdict",
+  "description": "Deterministic evaluator output (spec \u00a722.5).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "api_version",
+    "kind",
+    "feature_id",
+    "workflow_id",
+    "profile",
+    "authority",
+    "execution_profile",
+    "verdict",
+    "evaluation",
+    "acceptance_criteria",
+    "verification",
+    "scope",
+    "package_integrity",
+    "evidence",
+    "enforcement",
+    "reason_codes",
+    "findings",
+    "human_review"
+  ],
+  "properties": {
+    "api_version": {
+      "type": "string"
+    },
+    "kind": {
+      "const": "FeatureVerdict"
+    },
+    "feature_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workflow_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "profile": {
+      "enum": [
+        "full",
+        "lite"
+      ]
+    },
+    "authority": {
+      "enum": [
+        "advisory",
+        "authoritative"
+      ]
+    },
+    "execution_profile": {
+      "enum": [
+        "developer",
+        "qe",
+        "ci",
+        "hardware-lab"
+      ]
+    },
+    "verdict": {
+      "enum": [
+        "PASSED",
+        "FAILED",
+        "BLOCKED",
+        "INCONCLUSIVE"
+      ]
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "evaluated_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rework_cycle": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rework_allowed": {
+          "type": "boolean"
+        },
+        "next_state": {
+          "type": "string",
+          "minLength": 1
+        },
+        "inputs_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "rules_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "number",
+        "evaluated_at",
+        "rework_cycle",
+        "rework_allowed",
+        "next_state",
+        "inputs_digest",
+        "rules_version"
+      ]
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required_level": {
+          "enum": [
+            "L0",
+            "L1",
+            "L2",
+            "L3",
+            "L4",
+            "L5",
+            "L6"
+          ]
+        },
+        "highest_level_attempted": {
+          "enum": [
+            "L0",
+            "L1",
+            "L2",
+            "L3",
+            "L4",
+            "L5",
+            "L6",
+            null
+          ]
+        },
+        "highest_level_passed": {
+          "enum": [
+            "L0",
+            "L1",
+            "L2",
+            "L3",
+            "L4",
+            "L5",
+            "L6",
+            null
+          ]
+        },
+        "mandatory_gates_passed": {
+          "type": "boolean"
+        },
+        "failed_gates": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "required_level",
+        "highest_level_attempted",
+        "highest_level_passed",
+        "mandatory_gates_passed"
+      ]
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contract_hash_matches": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "unauthorised_changes": {
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "protected_path_changes": {
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "contract_hash_matches",
+        "unauthorised_changes",
+        "protected_path_changes"
+      ]
+    },
+    "package_integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "valid": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "invalid_packages": {
+          "type": "array"
+        }
+      },
+      "required": [
+        "valid",
+        "invalid_packages"
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "manifest_complete": {
+          "type": "boolean"
+        },
+        "missing_artefacts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "not_implemented": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "manifest_complete",
+        "missing_artefacts"
+      ]
+    },
+    "enforcement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lowest_tier_for_writes": {
+          "enum": [
+            "ENFORCED",
+            "DETECTED",
+            "ADVISORY",
+            null
+          ]
+        }
+      },
+      "required": [
+        "lowest_tier_for_writes"
+      ]
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "rule": {
+            "type": "string",
+            "minLength": 1
+          },
+          "category": {
+            "enum": [
+              "integrity",
+              "failure",
+              "blocked",
+              "insufficient"
+            ]
+          },
+          "reason_code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule",
+          "category",
+          "reason_code",
+          "message"
+        ]
+      }
+    },
+    "human_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "required",
+        "reason"
+      ]
+    }
+  }
+}

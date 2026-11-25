@@ -65,7 +65,7 @@ def test_stubs_never_report_success(runner, group, name, args, options, planned)
 
 
 def test_stub_text_output_and_exit(runner: CliRunner) -> None:
-    result = runner.invoke(cli, ["evaluate"])
+    result = runner.invoke(cli, ["close"])
     assert result.exit_code == ExitCode.NOT_IMPLEMENTED
     assert "NOT_IMPLEMENTED" in result.output
 

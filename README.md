@@ -17,8 +17,9 @@ features are claimed here.
 | HK-002 | Feature contracts (RFC 8785 hashing, lint, local owner approval, lock), artefact classes, scope validation, tree-hash checkpoints; `harness feature create/lint/approve` | Implemented (bootstrapping rule, advisory) |
 | HK-003 | Orchestration state machine (§15 table, ownership, revisioned and audited transitions, block/resume, tamper recovery); `harness workflow create/start/status/history/block/resume/cancel` | Implemented (bootstrapping rule, advisory) |
 | HK-004 | Gate engine and evidence: gate definitions and registry, sequential executor, attempts/retries/timeouts/profiles, process and session tools, JUnit counts, baseline gates at start, evidence bundle; `harness gate run`, `verify`, `evidence collect/validate` | Implemented (advisory) |
+| HK-005 | Deterministic evaluator: pure §22 rules, fixed verdict precedence, authority marking, write-once verdicts, `harness evaluate [--preview] [--bootstrap-records]` | Implemented (advisory) |
 | HK-015 | Read-only run monitor (`tools/monitor/`), audit record schema and event vocabulary | Implemented ahead of HK-003 at the feature owner's request (bootstrapping rule, advisory) |
-| HK-005 … HK-014 | Contracts and scope, state machine, gates, evaluator, MATLAB slice, personas, handoffs, packages, adapters, policy, rework, CI | Not started |
+| HK-006 … HK-014 | Contracts and scope, state machine, gates, evaluator, MATLAB slice, personas, handoffs, packages, adapters, policy, rework, CI | Not started |
 
 Every `harness` command from spec §26 is registered. Commands whose feature is
 not built report `NOT_IMPLEMENTED` and exit with code 3. They never report
@@ -91,6 +92,23 @@ only on the matching runner, and every verdict input produced so far is
 lock, plan, enforcement report, QE result, verdict) as `not_implemented` and
 reports `complete: false` until they exist. `process.command` runs only the
 argv written in the gate definition, without a shell.
+
+## Evaluation
+
+```bash
+harness evidence collect
+harness evaluate              # in EVALUATING: verdict, record, transition
+harness evaluate --preview    # any state: compute only, write nothing
+```
+
+Verdict precedence: integrity problems give INCONCLUSIVE, then an established
+failure gives FAILED (REWORK_PLANNING while cycles remain), then an
+unavailable dependency or approval gives BLOCKED, then insufficient evidence
+gives INCONCLUSIVE; otherwise PASSED. Until the plan, handoff, enforcement,
+package and QE-result features exist, real workflows evaluate to INCONCLUSIVE
+(`NOT_IMPLEMENTED`), never PASSED. Every verdict is advisory until CI
+authority (HK-013). The bootstrap records are re-evaluated in
+[`docs/bootstrap-evidence/re-evaluation.md`](docs/bootstrap-evidence/re-evaluation.md).
 
 ## Run monitor
 

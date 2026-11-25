@@ -1,0 +1,44 @@
+# Bootstrap records transcribed from the evidence notes, for the HK-005
+# re-evaluation (spec v1.1.1 §30). Gate results are the pytest runs recorded in
+# each note; there are no kernel gate attempts behind them.
+records:
+  - feature: HK-001
+    contract: features/completed/HK-001.yaml
+    lock_commit: 7515be4
+    contract_at_lock: features/active/HK-001.yaml
+    evidence_note: docs/bootstrap-evidence/HK-001.md
+    gates:
+      - {gate_id: structural, level: L0, result: PASSED, tests: 8}
+      - {gate_id: kernel-pytest, level: L1, result: PASSED, tests: 157}
+  - feature: HK-002
+    contract: features/completed/HK-002.yaml
+    lock_commit: fa05ce7
+    contract_at_lock: features/active/HK-002.yaml
+    evidence_note: docs/bootstrap-evidence/HK-002.md
+    gates:
+      - {gate_id: structural, level: L0, result: PASSED, tests: 11}
+      - {gate_id: kernel-pytest, level: L1, result: PASSED, tests: 411}
+  - feature: HK-003
+    contract: features/completed/HK-003.yaml
+    lock_commit: 2283321
+    contract_at_lock: features/active/HK-003.yaml
+    evidence_note: docs/bootstrap-evidence/HK-003.md
+    gates:
+      - {gate_id: structural, level: L0, result: PASSED, tests: 12}
+      - {gate_id: kernel-pytest, level: L1, result: PASSED, tests: 649}
+  - feature: HK-004
+    contract: features/completed/HK-004.yaml
+    lock_commit: be4232a
+    contract_at_lock: features/active/HK-004.yaml
+    evidence_note: docs/bootstrap-evidence/HK-004.md
+    gates:
+      - {gate_id: structural, level: L0, result: PASSED, tests: 16}
+      - {gate_id: kernel-pytest, level: L1, result: PASSED, tests: 723}
+  - feature: HK-015
+    contract: features/completed/HK-015.yaml
+    lock_commit: a257da1
+    contract_at_lock: features/active/HK-015.yaml
+    evidence_note: docs/bootstrap-evidence/HK-015.md
+    gates:
+      - {gate_id: structural, level: L0, result: PASSED, tests: 9}
+      - {gate_id: kernel-pytest, level: L1, result: PASSED, tests: 227}

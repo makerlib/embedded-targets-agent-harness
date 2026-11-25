@@ -229,7 +229,9 @@ def test_collect_builds_manifest(verified: Path) -> None:
     integrity = manifest["integrity"]
     assert integrity["complete"] is False and integrity["missing"] == []
     assert set(integrity["not_implemented"]) == {"packages-lock", "plan", "enforcement-report", "handoffs",
-                                                  "model-diffs", "verdict"}
+                                                  "model-diffs"}
+    verdict_item = next(i for i in manifest["items"] if i["id"] == "verdict")
+    assert verdict_item["status"] == "not_applicable"  # HK-005: written after collection
     assert manifest["verification"]["highest_level_passed"] == "L3"
     assert {c["id"]: c["gate_results"] for c in manifest["acceptance_criteria"]}["AC-001"] == {
         "matlab-unittest": "PASSED"}

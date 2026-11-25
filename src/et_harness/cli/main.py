@@ -123,7 +123,6 @@ STUBS: list[tuple[str | None, str, tuple[str, ...], tuple[str, ...], str]] = [
     ("persona", "launch", ("persona",), (), "HK-007"),
     ("handoff", "submit", (), (), "HK-008"),
     ("handoff", "validate", (), (), "HK-008"),
-    (None, "evaluate", (), (), "HK-005"),
     (None, "close", (), (), "HK-012"),
     ("package", "scaffold", (), (), "HK-009"),
     ("package", "validate", (), (), "HK-009"),
@@ -195,6 +194,45 @@ _workflow.register(cli, harness_command)
 from et_harness.cli import gates as _gates  # noqa: E402
 
 _gates.register(cli, harness_command)
+
+
+@cli.command("evaluate")
+@click.option("--preview", is_flag=True, help="Compute the verdict in any state without writing anything.")
+@click.option("--bootstrap-records", type=click.Path(dir_okay=False, exists=True, path_type=Path), default=None,
+              help="Re-evaluate transcribed bootstrap records (spec §30) instead of the workflow.")
+@click.option("--report", type=click.Path(dir_okay=False, path_type=Path), default=None,
+              help="With --bootstrap-records: write a Markdown report here.")
+@click.option("--project-root", type=click.Path(file_okay=False, path_type=Path), default=None)
+@harness_command("evaluate")
+def evaluate_cmd(preview: bool, bootstrap_records: Path | None, report: Path | None,
+                 project_root: Path | None) -> CommandResult:
+    from et_harness.cli.feature import resolve_root
+    from et_harness.evaluator.service import evaluate_bootstrap_records, evaluate_workflow, render_report
+
+    root = resolve_root(project_root)
+    if bootstrap_records is not None:
+        results = evaluate_bootstrap_records(bootstrap_records, root)
+        if report is not None:
+            from et_harness.common.atomic import atomic_write_text
+
+            atomic_write_text(report, render_report(results))
+        lines = [f"  {r['feature']}: {r['verdict']} ({', '.join(r['reason_codes'])})" for r in results]
+        return CommandResult("evaluate", True, f"re-evaluated {len(results)} bootstrap record(s)",
+                             {"records": results}, text_lines=lines)
+    from et_harness.orchestration.service import WorkflowService
+
+    out = evaluate_workflow(WorkflowService(root), preview=preview)
+    v = out["verdict"]
+    lines = [f"  {f['category']}: {f['reason_code'] or '-'} {f['message']}" for f in v["findings"]]
+    lines.append(f"  authority: {v['authority']}")
+    if out["transition"]:
+        lines.append(f"  workflow: {out['transition']}")
+    ok = v["verdict"] == "PASSED"
+    codes = [ReasonCode(c) for c in v["reason_codes"] if c in ReasonCode._value2member_map_]
+    label = "preview " if preview else ""
+    return CommandResult("evaluate", ok, f"{label}verdict {v['verdict']} ({v['authority']})", out, codes,
+                         ExitCode.OK if ok else (ExitCode.BLOCKED if v["verdict"] == "BLOCKED" else ExitCode.REJECTED),
+                         text_lines=lines)
 _register_stubs()
 
 

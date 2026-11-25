@@ -15,7 +15,7 @@ from et_harness.common.yaml_io import load_yaml_file
 from et_harness.config.controls import SETTINGS, flatten
 
 REPO = Path(__file__).resolve().parents[2]
-HK001_SCHEMAS = ["artefact-classes", "audit-record", "evidence-manifest", "feature", "gate", "gate-result", "harness-config", "orchestration-state", "project-config", "scope-lock", "verification-run"]
+HK001_SCHEMAS = ["artefact-classes", "audit-record", "evidence-manifest", "feature", "gate", "gate-result", "harness-config", "orchestration-state", "project-config", "scope-lock", "verdict", "verification-run"]
 
 
 @pytest.mark.parametrize("name", HK001_SCHEMAS)

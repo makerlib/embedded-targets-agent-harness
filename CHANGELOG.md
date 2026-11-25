@@ -2,6 +2,13 @@
 
 ## 0.1.0 (unreleased)
 
+### HK-005 Deterministic evaluator
+
+- Pure rule function (§22) with categories integrity, failure, blocked, insufficient and fixed verdict precedence.
+- Verification-level ladder, criterion status, approval rules (GitLab source required for human review, model review, L5/L6 sign-off, Class D/E), test-weakening, authority marking.
+- `harness evaluate`: write-once evaluation records and final `verdict.yaml`, transitions including REWORK_PLANNING, `verdict.issued` / `evaluation.result` audit events; `--preview`.
+- Re-evaluation of the bootstrap records (HK-001..HK-004, HK-015); verdict no longer counts against manifest completeness.
+
 ### HK-004 Gate engine and evidence
 
 - Gate definitions (`gate.schema.json`), registry (built-in + project), dependency/level ordering, cycle detection; lint uses registry levels.
