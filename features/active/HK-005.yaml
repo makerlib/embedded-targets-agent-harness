@@ -1,0 +1,147 @@
+# HK-005 feature contract: deterministic evaluator (spec v1.1.1 §9.18, §14.9, §22, §30).
+api_version: embedded-targets.ai/v1
+kind: FeatureContract
+
+metadata:
+  id: HK-005
+  title: Deterministic evaluator
+  owner: feature-owner
+  target_context:
+    family: none
+    release: none
+
+profile: full
+objective: >
+  Deliver the read-only deterministic evaluator: a pure rule function from
+  evidence to a PASSED, FAILED, BLOCKED or INCONCLUSIVE verdict with reason
+  codes, verification-level calculation, authority marking and an immutable
+  verdict file, behind `harness evaluate`, and use it to re-evaluate the
+  bootstrap records of HK-001 to HK-004 and HK-015.
+
+acceptance_criteria:
+  - id: AC-001
+    statement: >
+      The evaluator core is a pure function of an explicit input record
+      (state, scope lock, current contract, gate attempts, manifest
+      validation, approvals, scope report, audit integrity) and returns the
+      same verdict and reason codes for the same inputs.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-002
+    statement: >
+      PASSED is issued only when every §22.1 condition holds: contract hash
+      matches; every gate criterion's gates passed in the current rework
+      cycle; every mandatory gate passed; the required level is reached;
+      there are no scope, protected-path, QE-test-path or derived-artefact
+      findings; changed models are reviewed; no test weakening; the state and
+      audit integrity chain is intact; required approvals are valid; L5/L6
+      sign-off exists where required; the manifest is complete and verifies;
+      no blocker or open initialisation check remains.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-003
+    statement: >
+      Verdict precedence is deterministic: integrity problems (tamper,
+      contract mismatch, corrupted evidence) give INCONCLUSIVE; an
+      established failure (failed mandatory gate, unauthorised change, test
+      weakening) gives FAILED; an unavailable dependency or approval
+      (blocked gate, blocker, human_review criterion, changed model or L5/L6
+      sign-off without a verifiable approval) gives BLOCKED; insufficient
+      evidence (missing or inconclusive gates, incomplete manifest, open
+      NOT_IMPLEMENTED checks, level not reached) gives INCONCLUSIVE.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-004
+    statement: >
+      Authority is advisory unless every mandatory gate attempt ran under the
+      ci or hardware-lab profile and authority verification exists (HK-013);
+      a would-be PASSED that is advisory carries VERDICT_NOT_AUTHORITATIVE.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-005
+    statement: >
+      `harness evaluate` in EVALUATING writes a write-once evaluation record
+      and, for a terminal verdict, a write-once verdict.yaml valid against
+      schemas/verdict.schema.json. It transitions to PASSED, FAILED,
+      REWORK_PLANNING (failure with rework cycles left), BLOCKED or
+      INCONCLUSIVE, and emits evaluation.result or verdict.issued audit
+      events. `--preview` computes a verdict in any state without writing
+      anything.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-006
+    statement: >
+      The evaluator writes nothing except its evaluation and verdict files
+      and the state transition: product files, gate attempts and other
+      evidence stay byte-identical.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-007
+    statement: >
+      The evidence manifest no longer counts the verdict toward completeness
+      before evaluation (the evaluator produces it after collection).
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+  - id: AC-008
+    statement: >
+      `harness evaluate --bootstrap-records` evaluates the transcribed
+      bootstrap records of HK-001 to HK-004 and HK-015 at L0/L1 with the same
+      rules, and the committed report states each verdict and its reasons
+      without upgrading any record.
+    verification_method: gate
+    gates: [kernel-pytest]
+    expected_on_baseline: fail
+
+scope:
+  allowed_paths:
+    - src/et_harness/evaluator/**
+    - src/et_harness/orchestration/service.py
+    - src/et_harness/evidence/bundle.py
+    - src/et_harness/cli/**
+    - schemas/verdict.schema.json
+    - schemas/evidence-manifest.schema.json
+    - tests/unit/**
+    - tests/integration/**
+    - tests/fixtures/**
+    - docs/bootstrap-evidence/HK-005.md
+    - docs/bootstrap-evidence/bootstrap-records.yaml
+    - docs/bootstrap-evidence/re-evaluation.md
+    - README.md
+    - CHANGELOG.md
+  protected_paths:
+    - features/active/**
+    - features/completed/**
+    - docs/specification/**
+    - docs/bootstrap-evidence/HK-00[1-4].md
+    - docs/bootstrap-evidence/HK-015.md
+    - src/et_harness/audit/**
+    - src/et_harness/sessions/**
+    - src/et_harness/gates/**
+    - schemas/audit-record.schema.json
+    - tools/monitor/**
+  qe_test_paths: []
+
+verification:
+  required_level: L1
+  required_gates: [structural, kernel-pytest]
+  qe_test_design: "off"
+
+approvals:
+  required: []
+
+rework:
+  maximum_cycles: 3
+
+intake:
+  drafted_by: claude-code-implementer
+  approved_by: "feature-owner"
+  approval_ref: "local"
+  approved_at: "2026-11-25T01:37:27Z"
+  approved_content_hash: "sha256:8b3416995c87daec2b3bf61ac2f6eb1a9797877f2a7acce383cc634ced70bd59"
